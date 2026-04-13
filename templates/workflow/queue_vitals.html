@@ -1,0 +1,88 @@
+{% extends "layouts/queue_layout.html" %}
+
+{% block queue_title %}Questionnaire Completed{% endblock %}
+
+{% block queue_content %}
+<div class="overflow-x-auto">
+    <table class="min-w-full divide-y divide-slate-100">
+        <thead class="bg-slate-50/50">
+            <tr>
+                <th class="px-8 py-5 text-left text-xs font-bold text-slate-400 uppercase tracking-wider">Donation Code
+                </th>
+                <th class="px-8 py-5 text-left text-xs font-bold text-slate-400 uppercase tracking-wider">Donor</th>
+                <th class="px-8 py-5 text-left text-xs font-bold text-slate-400 uppercase tracking-wider">Action
+                </th>
+            </tr>
+        </thead>
+        <tbody class="divide-y divide-slate-100">
+            <template x-if="isLoading">
+                <tr>
+                    <td colspan="3" class="px-8 py-12 text-center text-slate-400 animate-pulse">Loading queue...</td>
+                </tr>
+            </template>
+            <template x-for="item in items" :key="item.id">
+                <tr @click="selectCase(item)" class="hover:bg-slate-50/80 transition-colors cursor-pointer group">
+                    <td class="px-8 py-5 whitespace-nowrap">
+                        <span class="font-mono text-sm font-bold text-brand-600 bg-brand-50 px-2 py-1 rounded"
+                            x-text="item.donation_code"></span>
+                    </td>
+                    <td class="px-8 py-5 whitespace-nowrap">
+                        <div class="flex items-center">
+                            <div
+                                class="h-8 w-8 rounded-full bg-gradient-to-br from-slate-100 to-slate-200 flex items-center justify-center text-xs font-bold text-slate-500 border border-slate-200 mr-3">
+                                <span x-text="item.donor_details.full_name.charAt(0)"></span>
+                            </div>
+                            <div class="text-sm font-bold text-slate-900" x-text="item.donor_details.full_name"></div>
+                        </div>
+                    </td>
+                    <td class="px-8 py-5 whitespace-nowrap text-sm font-medium text-slate-600">
+                        <a :href="'/donors/' + item.donor + '/workflow/'"
+                            class="inline-flex items-center px-3 py-1.5 border border-slate-200 shadow-sm text-xs font-bold rounded-lg text-slate-700 bg-white hover:bg-slate-50 hover:text-brand-600 transition-all">
+                            Donor File
+                            <svg class="ml-1.5 w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                    d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
+                            </svg>
+                        </a>
+                    </td>
+                </tr>
+            </template>
+            <tr x-show="items.length === 0 && !isLoading">
+                <td colspan="3" class="px-8 py-12 text-center">
+                    <div class="flex flex-col items-center justify-center text-slate-400">
+                        <svg class="w-12 h-12 mb-3 text-slate-200" fill="none" viewBox="0 0 24 24"
+                            stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5"
+                                d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                        </svg>
+                        <p class="text-sm font-medium">No donations pending in Vitals</p>
+                    </div>
+                </td>
+            </tr>
+        </tbody>
+    </table>
+</div>
+{% endblock %}
+
+{% block queue_panel_content %}
+<div class="space-y-6" x-data="{ 
+    vitals: {
+        weight: '',
+        temperature: '',
+        pulse: '',
+        bp_systolic: '',
+        bp_diastolic: '',
+        hemoglobin: ''
+    }
+}">
+
+    <div class="mt-8 pt-4 border-t border-gray-200 dark:border-gray-700">
+        <button @click="completeStep(`/api/workflow/queue/${selectedCase.id}/complete_vitals/`, form)"
+            :disabled="formSubmitting || !form.weight"
+            class="w-full flex justify-center py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:opacity-50">
+            <span x-show="!formSubmitting">Record Vitals & Proceed</span>
+            <span x-show="formSubmitting">Saving...</span>
+        </button>
+    </div>
+</div>
+{% endblock %}

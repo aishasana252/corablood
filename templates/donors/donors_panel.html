@@ -1,0 +1,160 @@
+<!-- Donors Side Panel (Dedicated) -->
+<div x-show="panelOpen" class="relative z-50" style="display: none;" aria-labelledby="slide-over-title" role="dialog"
+    aria-modal="true">
+    <!-- Backdrop -->
+    <div x-show="panelOpen" x-transition:enter="ease-in-out duration-500" x-transition:enter-start="opacity-0"
+        x-transition:enter-end="opacity-100" x-transition:leave="ease-in-out duration-500"
+        x-transition:leave-start="opacity-100" x-transition:leave-end="opacity-0"
+        class="fixed inset-0 bg-slate-900/50 backdrop-blur-sm transition-opacity" @click="panelOpen = false"></div>
+
+    <div class="fixed inset-0 overflow-hidden">
+        <div class="absolute inset-0 overflow-hidden">
+            <div class="pointer-events-none fixed inset-y-0 right-0 flex max-w-full pl-10">
+
+                <!-- Panel Content -->
+                <div x-show="panelOpen"
+                    x-transition:enter="transform transition ease-in-out duration-500 sm:duration-700"
+                    x-transition:enter-start="translate-x-full" x-transition:enter-end="translate-x-0"
+                    x-transition:leave="transform transition ease-in-out duration-500 sm:duration-700"
+                    x-transition:leave-start="translate-x-0" x-transition:leave-end="translate-x-full"
+                    class="pointer-events-auto w-screen max-w-md">
+
+                    <div class="flex h-full flex-col overflow-y-scroll bg-white shadow-2xl">
+
+                        <!-- Header -->
+                        <div class="px-6 py-6 bg-slate-50 border-b border-slate-100">
+                            <div class="flex items-start justify-between">
+                                <div class="space-y-1">
+                                    <h2 class="text-xl font-display font-bold text-slate-800" id="slide-over-title">
+                                        <span
+                                            x-text="selectedCase ? selectedCase.donor_details.full_name : 'Loading...'"></span>
+                                    </h2>
+                                    <div class="flex items-center gap-2 text-sm text-slate-500">
+                                        <span class="font-mono bg-slate-200/50 px-2 py-0.5 rounded text-slate-600"
+                                            x-text="selectedCase ? selectedCase.donor_details.national_id : ''"></span>
+                                        <span>&bull;</span>
+                                        <span
+                                            class="inline-flex items-center px-2 py-0.5 rounded text-xs font-bold bg-red-50 text-red-700 border border-red-100"
+                                            x-text="selectedCase ? selectedCase.donor_details.blood_group : ''"></span>
+                                    </div>
+                                </div>
+                                <div class="ml-3 flex h-7 items-center">
+                                    <button type="button" @click="panelOpen = false"
+                                        class="rounded-md bg-white text-slate-400 hover:text-slate-500 focus:outline-none focus:ring-2 focus:ring-brand-500 focus:ring-offset-2 transition-colors">
+                                        <span class="sr-only">Close panel</span>
+                                        <svg class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke-width="1.5"
+                                            stroke="currentColor" aria-hidden="true">
+                                            <path stroke-linecap="round" stroke-linejoin="round"
+                                                d="M6 18L18 6M6 6l12 12" />
+                                        </svg>
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Body -->
+                        <div class="relative flex-1 px-6 py-6">
+
+                            <!-- Loading State -->
+                            <div x-show="isLoading" class="flex justify-center items-center h-48">
+                                <svg class="animate-spin h-8 w-8 text-brand-500" xmlns="http://www.w3.org/2000/svg"
+                                    fill="none" viewBox="0 0 24 24">
+                                    <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor"
+                                        stroke-width="4"></circle>
+                                    <path class="opacity-75" fill="currentColor"
+                                        d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z">
+                                    </path>
+                                </svg>
+                            </div>
+
+                            <div x-show="!isLoading && selectedCase" class="space-y-8">
+
+                                <!-- Contact Section -->
+                                <div>
+                                    <h3 class="text-xs font-semibold text-slate-400 uppercase tracking-wider mb-4">
+                                        Contact Details</h3>
+                                    <div class="grid grid-cols-2 gap-6">
+                                        <div>
+                                            <dt class="text-xs text-slate-500 mb-1">Mobile Number</dt>
+                                            <dd class="text-sm font-medium text-slate-800"
+                                                x-text="selectedCase ? selectedCase.donor_details.mobile : 'N/A'"></dd>
+                                        </div>
+                                        <div>
+                                            <dt class="text-xs text-slate-500 mb-1">Nationality</dt>
+                                            <dd class="text-sm font-medium text-slate-800"
+                                                x-text="selectedCase ? selectedCase.donor_details.nationality : 'N/A'">
+                                            </dd>
+                                        </div>
+                                        <div>
+                                            <dt class="text-xs text-slate-500 mb-1">Gender</dt>
+                                            <dd class="text-sm font-medium text-slate-800"
+                                                x-text="selectedCase ? selectedCase.donor_details.gender : 'N/A'"></dd>
+                                        </div>
+                                        <div>
+                                            <dt class="text-xs text-slate-500 mb-1">Address</dt>
+                                            <dd class="text-sm font-medium text-slate-800 truncate"
+                                                x-text="selectedCase ? selectedCase.donor_details.address || 'Not Recorded' : ''">
+                                            </dd>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <!-- Separator -->
+                                <div class="border-t border-slate-100"></div>
+
+                                <!-- Donation Status -->
+                                <div>
+                                    <h3 class="text-xs font-semibold text-slate-400 uppercase tracking-wider mb-4">
+                                        Donation Status</h3>
+                                    <div class="bg-slate-50 rounded-xl p-4 border border-slate-100 space-y-3">
+                                        <div class="flex justify-between items-center">
+                                            <span class="text-sm text-slate-600">Last Donation</span>
+                                            <span class="text-sm font-bold text-slate-800"
+                                                x-text="selectedCase && selectedCase.donor_details.last_donation_date ? selectedCase.donor_details.last_donation_date : 'Never'"></span>
+                                        </div>
+                                        <div class="flex justify-between items-center">
+                                            <span class="text-sm text-slate-600">Eligibility</span>
+                                            <div class="flex items-center gap-2">
+                                                <template x-if="selectedCase?.donor_details.is_eligible">
+                                                    <span
+                                                        class="inline-flex items-center px-2 py-0.5 rounded text-xs font-bold bg-emerald-100 text-emerald-700 border border-emerald-200">
+                                                        Eligible Now
+                                                    </span>
+                                                </template>
+                                                <template x-if="!selectedCase?.donor_details.is_eligible">
+                                                    <span
+                                                        class="inline-flex items-center px-2 py-0.5 rounded text-xs font-bold bg-rose-100 text-rose-700 border border-rose-200">
+                                                        Not Eligible
+                                                    </span>
+                                                </template>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <!-- Actions -->
+                                <div class="pt-4 flex flex-col gap-3">
+                                    <button @click="startDonation(selectedCase.donor)"
+                                        class="w-full flex justify-center items-center px-4 py-3 border border-transparent text-sm font-bold rounded-xl text-white bg-gradient-to-r from-brand-600 to-brand-500 hover:from-brand-700 hover:to-brand-600 shadow-lg shadow-brand-500/30 transition-all hover:-translate-y-0.5 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-brand-500">
+                                        <svg class="w-5 h-5 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                                d="M12 4v16m8-8H4" />
+                                        </svg>
+                                        Start New Donation
+                                    </button>
+
+                                    <a :href="'/donors/' + (selectedCase ? selectedCase.donor : '') + '/workflow/'"
+                                        target="_blank"
+                                        class="w-full flex justify-center items-center px-4 py-3 border border-slate-200 text-sm font-bold rounded-xl text-slate-600 bg-white hover:bg-slate-50 hover:text-slate-900 transition-all">
+                                        View Full Profile
+                                    </a>
+                                </div>
+
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>

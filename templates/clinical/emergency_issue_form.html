@@ -1,0 +1,124 @@
+{% extends 'base.html' %}
+
+{% block title %}Emergency Issue Request | CoraBlood AI{% endblock %}
+{% block header %}
+<span x-text="lang === 'en' ? 'Emergency Issue Request' : 'طلب صرف طارئ'"></span>
+{% endblock %}
+
+{% block content %}
+<div class="bg-white rounded-lg shadow-sm border border-slate-200 p-8 space-y-8">
+
+    <!-- Header Section -->
+    <div class="space-y-6">
+        <!-- Patient MRN -->
+        <div class="flex items-center gap-4">
+            <label class="w-48 text-sm font-bold text-slate-800">Patient MRN</label>
+            <button
+                class="bg-[#F59E0B] hover:bg-[#D97706] text-white text-sm font-bold py-2 px-6 rounded shadow-sm transition-colors">
+                Select Patient
+            </button>
+        </div>
+
+        <!-- Confirm MRN -->
+        <div class="space-y-1.5">
+            <label class="block text-sm font-bold text-slate-800">Confirm MRN</label>
+            <input type="text" placeholder="Confirm MRN"
+                class="w-full rounded border-slate-300 text-sm px-4 py-2.5 bg-white focus:ring-brand-500 focus:border-brand-500">
+            <!-- Red left border effect simulated via inline box-shadow or just border-l-4 if needed. Screenshot has red bar. -->
+        </div>
+
+        <!-- Nurse Name -->
+        <div class="space-y-1.5 relative">
+            <label class="block text-sm font-bold text-slate-800">Nurse Name</label>
+            <div class="flex">
+                <div class="w-1 bg-red-500 rounded-l"></div>
+                <input type="text" placeholder="Nurse Name"
+                    class="flex-1 rounded-r border border-l-0 border-slate-300 text-sm px-4 py-2.5 focus:ring-brand-500 focus:border-brand-500">
+            </div>
+        </div>
+
+        <!-- Nurse Badge Number -->
+        <div class="space-y-1.5 relative">
+            <label class="block text-sm font-bold text-slate-800">Nurse Badge Number</label>
+            <div class="flex">
+                <div class="w-1 bg-red-500 rounded-l"></div>
+                <input type="text" placeholder="Nurse Badge Number"
+                    class="flex-1 rounded-r border border-l-0 border-slate-300 text-sm px-4 py-2.5 focus:ring-brand-500 focus:border-brand-500">
+            </div>
+        </div>
+
+        <!-- Checkboxes -->
+        <div class="space-y-3 pt-2">
+            <label class="flex items-center gap-3 cursor-pointer group">
+                <input type="checkbox"
+                    class="w-5 h-5 rounded border-red-500 text-red-600 focus:ring-red-500 cursor-pointer">
+                <span class="text-sm font-bold text-slate-800 group-hover:text-slate-900">Visual Inspection</span>
+            </label>
+            <label class="flex items-center gap-3 cursor-pointer group">
+                <input type="checkbox"
+                    class="w-5 h-5 rounded border-red-500 text-red-600 focus:ring-red-500 cursor-pointer">
+                <span class="text-sm font-bold text-slate-800 group-hover:text-slate-900">Label Checked</span>
+            </label>
+        </div>
+    </div>
+
+    <!-- Component Selection -->
+    <div class="flex justify-center py-6 border-t border-slate-100 border-b">
+        <button
+            class="bg-[#3B82F6] hover:bg-[#2563EB] text-white text-sm font-bold py-2.5 px-8 rounded shadow-sm transition-colors">
+            Choose Component
+        </button>
+    </div>
+
+    <!-- Selected Components Table -->
+    <div class="space-y-4">
+        <h3 class="text-sm font-bold text-slate-700">Selected Components:</h3>
+        <div class="overflow-x-auto border border-slate-200 rounded-lg">
+            <table class="min-w-full divide-y divide-slate-200">
+                <thead class="bg-white">
+                    <tr>
+                        <th class="px-4 py-3 text-left text-xs font-bold text-slate-900">#</th>
+                        <th class="px-4 py-3 text-left text-xs font-bold text-slate-900">Donation code</th>
+                        <th class="px-4 py-3 text-left text-xs font-bold text-slate-900">Unit Type</th>
+                        <th class="px-4 py-3 text-left text-xs font-bold text-slate-900">Volume</th>
+                        <th class="px-4 py-3 text-left text-xs font-bold text-slate-900">Issued</th>
+                        <th class="px-4 py-3 text-left text-xs font-bold text-slate-900">Remaining</th>
+                        <th class="px-4 py-3 text-left text-xs font-bold text-slate-900">BloodGroup</th>
+                        <th class="px-4 py-3 text-left text-xs font-bold text-slate-900">ExpireDate</th>
+                        <th class="px-4 py-3 text-left text-xs font-bold text-slate-900">Is partially Issue?</th>
+                        <th class="px-4 py-3 text-left text-xs font-bold text-slate-900">Volume Issuing</th>
+                        <th class="px-4 py-3 text-left text-xs font-bold text-slate-900">Notes</th>
+                    </tr>
+                </thead>
+                <tbody class="divide-y divide-slate-100">
+                    <!-- Empty state row -->
+                    <tr>
+                        <td colspan="11" class="px-6 py-8 text-center text-slate-400 text-sm">No components selected
+                        </td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <!-- Reason Section -->
+    <div class="space-y-2">
+        <label class="block text-sm font-bold text-slate-800">Reason</label>
+        <textarea rows="3" placeholder="Reason"
+            class="w-full rounded border-slate-300 text-sm px-4 py-2.5 focus:ring-brand-500 focus:border-brand-500"></textarea>
+    </div>
+
+    <!-- Footer Actions -->
+    <div class="flex items-center gap-3 pt-4">
+        <button
+            class="bg-[#60A5FA] hover:bg-[#3B82F6] text-white text-sm font-bold py-2 px-6 rounded shadow-sm transition-colors">
+            Save
+        </button>
+        <a href="{% url 'emergency_issue_list' %}"
+            class="bg-slate-100 hover:bg-slate-200 text-slate-600 text-sm font-bold py-2 px-6 rounded shadow-sm transition-colors">
+            cancel
+        </a>
+    </div>
+
+</div>
+{% endblock %}

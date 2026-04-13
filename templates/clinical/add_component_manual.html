@@ -1,0 +1,149 @@
+{% extends "base.html" %}
+
+{% block title %}Add Component Manual - CoraBlood{% endblock %}
+
+{% block header %}Add Component Manual{% endblock %}
+
+{% block content %}
+<div class="space-y-8">
+
+    <!-- Manual Entry Form -->
+    <div class="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden">
+        <div class="p-6 border-b border-slate-100 bg-slate-50/50">
+            <h3 class="text-lg font-bold text-slate-900">Add Component Manual</h3>
+            <p class="text-sm text-slate-500">Manually register individual blood components into inventory.</p>
+        </div>
+
+        <form method="post" action="." class="p-8">
+            {% csrf_token %}
+
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-x-8 gap-y-6">
+
+                <!-- Source -->
+                <div>
+                    <label
+                        class="block text-xs font-semibold text-slate-500 uppercase tracking-wider mb-2">Source</label>
+                    <select name="source"
+                        class="w-full px-4 py-2.5 rounded-lg bg-slate-50 border border-slate-200 text-slate-700 focus:ring-2 focus:ring-brand-500/20 focus:border-brand-500 outline-none transition-all">
+                        <option value="" disabled selected>Select Source...</option>
+                        {% for src in sources %}
+                        <option value="{{ src }}">{{ src }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+
+                <!-- Component Type -->
+                <div>
+                    <label class="block text-xs font-semibold text-slate-500 uppercase tracking-wider mb-2">Component
+                        Type</label>
+                    <select name="component_type" required
+                        class="w-full px-4 py-2.5 rounded-lg bg-slate-50 border border-slate-200 text-slate-700 focus:ring-2 focus:ring-brand-500/20 focus:border-brand-500 outline-none transition-all">
+                        <option value="" disabled selected>Select Component Type...</option>
+                        {% for code, label in component_types %}
+                        <option value="{{ code }}">{{ label }} ({{ code }})</option>
+                        {% endfor %}
+                    </select>
+                </div>
+
+                <!-- Donation Code -->
+                <div>
+                    <label class="block text-xs font-semibold text-slate-500 uppercase tracking-wider mb-2">Donation
+                        Code</label>
+                    <input type="text" name="donation_code" placeholder="e.g. DIN-123456" required
+                        class="w-full px-4 py-2.5 rounded-lg bg-slate-50 border border-slate-200 text-slate-900 focus:ring-2 focus:ring-brand-500/20 focus:border-brand-500 outline-none transition-all placeholder:text-slate-400">
+                </div>
+
+                <!-- Blood Group -->
+                <div>
+                    <label class="block text-xs font-semibold text-slate-500 uppercase tracking-wider mb-2">Blood
+                        Group</label>
+                    <select name="blood_group" required
+                        class="w-full px-4 py-2.5 rounded-lg bg-slate-50 border border-slate-200 text-slate-700 focus:ring-2 focus:ring-brand-500/20 focus:border-brand-500 outline-none transition-all">
+                        <option value="" disabled selected>Select Blood Group...</option>
+                        {% for bg in blood_groups %}
+                        <option value="{{ bg }}">{{ bg }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+
+                <!-- Collected Date -->
+                <div>
+                    <label class="block text-xs font-semibold text-slate-500 uppercase tracking-wider mb-2">Collected
+                        Date</label>
+                    <input type="date" name="collected_date" required
+                        class="w-full px-4 py-2.5 rounded-lg bg-slate-50 border border-slate-200 text-slate-900 focus:ring-2 focus:ring-brand-500/20 focus:border-brand-500 outline-none transition-all">
+                </div>
+
+                <!-- Expiry Date -->
+                <div>
+                    <label class="block text-xs font-semibold text-slate-500 uppercase tracking-wider mb-2">Expiry
+                        Date</label>
+                    <input type="date" name="expiry_date" required
+                        class="w-full px-4 py-2.5 rounded-lg bg-slate-50 border border-slate-200 text-slate-900 focus:ring-2 focus:ring-brand-500/20 focus:border-brand-500 outline-none transition-all">
+                </div>
+
+                <!-- Volume -->
+                <div>
+                    <label class="block text-xs font-semibold text-slate-500 uppercase tracking-wider mb-2">Volume
+                        (ml)</label>
+                    <input type="number" name="volume" placeholder="450" required
+                        class="w-full px-4 py-2.5 rounded-lg bg-slate-50 border border-slate-200 text-slate-900 focus:ring-2 focus:ring-brand-500/20 focus:border-brand-500 outline-none transition-all placeholder:text-slate-400">
+                </div>
+
+                <!-- Site -->
+                <div>
+                    <label class="block text-xs font-semibold text-slate-500 uppercase tracking-wider mb-2">Site</label>
+                    <select name="site"
+                        class="w-full px-4 py-2.5 rounded-lg bg-slate-50 border border-slate-200 text-slate-700 focus:ring-2 focus:ring-brand-500/20 focus:border-brand-500 outline-none transition-all">
+                        <option value="" disabled selected>Select Site...</option>
+                        {% for site in sites %}
+                        <option value="{{ site }}">{{ site }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+
+                <!-- Visual Inspection -->
+                <div class="md:col-span-2 pt-2">
+                    <label class="flex items-center cursor-pointer group w-fit">
+                        <input type="checkbox" name="visual_inspection" class="sr-only peer">
+                        <div
+                            class="w-5 h-5 flex items-center justify-center border-2 border-slate-300 rounded peer-checked:bg-emerald-500 peer-checked:border-emerald-500 transition-colors">
+                            <svg class="w-3.5 h-3.5 text-white opacity-0 peer-checked:opacity-100 transition-opacity"
+                                fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="3">
+                                <path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7" />
+                            </svg>
+                        </div>
+                        <span
+                            class="ml-3 text-sm font-medium text-slate-700 group-hover:text-slate-900 transition-colors">Visual
+                            Inspection Passed</span>
+                    </label>
+                </div>
+
+            </div>
+
+            <!-- Action Buttons -->
+            <div class="flex gap-4 mt-10 pt-6 border-t border-slate-100">
+                <button type="submit"
+                    class="px-8 py-2.5 bg-brand-600 text-white text-sm font-semibold rounded-lg shadow-lg shadow-brand-500/30 hover:bg-brand-700 transition-all hover:-translate-y-0.5 focus:ring-4 focus:ring-brand-500/20">
+                    Save Component
+                </button>
+
+                <button type="button" onclick="window.history.back()"
+                    class="px-8 py-2.5 bg-white text-slate-600 text-sm font-semibold rounded-lg border border-slate-200 hover:bg-slate-50 hover:text-slate-800 transition-all">
+                    Cancel
+                </button>
+            </div>
+        </form>
+    </div>
+
+    <!-- Listing Section Placeholder -->
+    <div class="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden opacity-60">
+        <div class="p-6 border-b border-slate-100">
+            <h3 class="text-lg font-bold text-slate-900">Manual Component Listing</h3>
+        </div>
+        <div class="p-12 text-center text-slate-400 italic">
+            Recently added manual components will appear here.
+        </div>
+    </div>
+</div>
+{% endblock %}

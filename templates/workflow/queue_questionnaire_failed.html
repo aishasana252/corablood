@@ -1,0 +1,52 @@
+{% extends "base.html" %}
+
+{% block title %}Questionnaire Failed - CoraBlood{% endblock %}
+
+{% block header %}Questionnaire Failed / Deferred{% endblock %}
+
+{% block content %}
+<div class="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden">
+    <div class="p-6 border-b border-slate-100 bg-rose-50/30">
+        <h3 class="text-lg font-bold text-rose-800">Questionnaire Failures</h3>
+        <p class="text-sm text-slate-500">Donors deferred due to medical questionnaire answers.</p>
+    </div>
+
+    <div class="overflow-x-auto">
+        <table class="w-full text-left">
+            <thead class="bg-white border-b border-slate-100">
+                <tr>
+                    <th class="px-6 py-4 text-xs font-semibold text-slate-500 uppercase tracking-wider">Donor</th>
+                    <th class="px-6 py-4 text-xs font-semibold text-slate-500 uppercase tracking-wider">National ID</th>
+                    <th class="px-6 py-4 text-xs font-semibold text-slate-500 uppercase tracking-wider">Deferral Date
+                    </th>
+                    <th class="px-6 py-4 text-xs font-semibold text-slate-500 uppercase tracking-wider">Status</th>
+                    <th class="px-6 py-4 text-xs font-semibold text-slate-500 uppercase tracking-wider text-right">
+                        Actions</th>
+                </tr>
+            </thead>
+            <tbody class="divide-y divide-slate-50">
+                {% for wf in workflows %}
+                <tr class="hover:bg-slate-50 transition-colors">
+                    <td class="px-6 py-4 text-sm font-bold text-slate-700">{{ wf.donor.full_name }}</td>
+                    <td class="px-6 py-4 text-sm text-slate-600 font-mono">{{ wf.donor.national_id }}</td>
+                    <td class="px-6 py-4 text-sm text-slate-600">{{ wf.updated_at|date:"d M Y, H:i" }}</td>
+                    <td class="px-6 py-4">
+                        <span
+                            class="px-2 py-1 bg-rose-100 text-rose-700 text-[10px] uppercase font-bold rounded">Deferred</span>
+                    </td>
+                    <td class="px-6 py-4 text-right">
+                        <a href="{% url 'donor_workflow' wf.donor.id %}"
+                            class="text-indigo-600 hover:text-indigo-900 text-sm font-medium">Review</a>
+                    </td>
+                </tr>
+                {% empty %}
+                <tr>
+                    <td colspan="5" class="px-6 py-12 text-center text-slate-400 italic">No failed questionnaires found.
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+{% endblock %}

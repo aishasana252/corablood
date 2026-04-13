@@ -1,0 +1,135 @@
+<!-- Side Panel (Right Drawer) -->
+<!-- Requires x-data="{ panelOpen: false, selectedCase: null, ... }" in parent scope OR we define a global store -->
+<!-- Let's assume the parent 'queue_*.html' defines the logic and simply includes this markup structure -->
+
+<div x-show="panelOpen" class="fixed inset-0 overflow-hidden z-50" style="display: none;"
+    aria-labelledby="slide-over-title" role="dialog" aria-modal="true">
+    <div class="absolute inset-0 overflow-hidden">
+        <!-- Backdrop -->
+        <div x-show="panelOpen" x-transition:enter="ease-in-out duration-500" x-transition:enter-start="opacity-0"
+            x-transition:enter-end="opacity-100" x-transition:leave="ease-in-out duration-500"
+            x-transition:leave-start="opacity-100" x-transition:leave-end="opacity-0"
+            class="absolute inset-0 bg-gray-500 bg-opacity-75 transition-opacity" @click="panelOpen = false"></div>
+
+        <div class="fixed inset-y-0 right-0 pl-10 max-w-full flex">
+            <!-- Panel Content -->
+            <div x-show="panelOpen" x-transition:enter="transform transition ease-in-out duration-500 sm:duration-700"
+                x-transition:enter-start="translate-x-full" x-transition:enter-end="translate-x-0"
+                x-transition:leave="transform transition ease-in-out duration-500 sm:duration-700"
+                x-transition:leave-start="translate-x-0" x-transition:leave-end="translate-x-full"
+                class="w-screen max-w-2xl">
+                <div class="h-full flex flex-col bg-white dark:bg-gray-800 shadow-xl overflow-y-scroll">
+
+                    <!-- Header -->
+                    <div class="px-4 py-6 sm:px-6 bg-red-700 text-white">
+                        <div class="flex items-start justify-between">
+                            <div>
+                                <h2 class="text-lg font-medium" id="slide-over-title">
+                                    <span
+                                        x-text="selectedCase ? selectedCase.donor_details.full_name : 'Loading...'"></span>
+                                </h2>
+                                <p class="text-sm text-red-100 mt-1">
+                                    ID: <span
+                                        x-text="selectedCase ? selectedCase.donor_details.national_id : ''"></span> |
+                                    Blood Group: <span
+                                        x-text="selectedCase ? selectedCase.donor_details.blood_group : 'Unknown'"></span>
+                                </p>
+                            </div>
+                            <div class="ml-3 h-7 flex items-center gap-2">
+                                <a :href="'/donors/' + (selectedCase ? selectedCase.donor : '') + '/history/'"
+                                    class="px-3 py-1 text-xs font-bold text-red-100 bg-red-800/50 hover:bg-red-800 rounded-md transition-colors"
+                                    target="_blank">
+                                    Full Profile &rarr;
+                                </a>
+                                <button type="button" @click="panelOpen = false"
+                                    class="bg-red-700 rounded-md text-red-200 hover:text-white focus:outline-none">
+                                    <span class="sr-only">Close panel</span>
+                                    <svg class="h-6 w-6" xmlns="http://www.w3.org/2000/svg" fill="none"
+                                        viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                            d="M6 18L18 6M6 6l12 12" />
+                                    </svg>
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Body (Dynamic Slot) -->
+                    <div class="relative flex-1 px-4 sm:px-6 py-6">
+
+                        <!-- Loading State -->
+                        <div x-show="isLoading" class="flex justify-center items-center h-32">
+                            <svg class="animate-spin h-8 w-8 text-red-600" xmlns="http://www.w3.org/2000/svg"
+                                fill="none" viewBox="0 0 24 24">
+                                <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor"
+                                    stroke-width="4"></circle>
+                                <path class="opacity-75" fill="currentColor"
+                                    d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z">
+                                </path>
+                            </svg>
+                        </div>
+
+                        <!-- Content Slot -->
+                        <div x-show="!isLoading && selectedCase">
+                            <div class="space-y-6">
+                                <div>
+                                    <h3 class="text-sm font-medium text-gray-500">Contact Information</h3>
+                                    <dl class="mt-2 grid grid-cols-1 gap-x-4 gap-y-4 sm:grid-cols-2">
+                                        <div class="sm:col-span-1">
+                                            <dt class="text-sm font-medium text-gray-500">Mobile</dt>
+                                            <dd class="mt-1 text-sm text-gray-900"
+                                                x-text="selectedCase ? selectedCase.donor_details.mobile : ''"></dd>
+                                        </div>
+                                        <div class="sm:col-span-1">
+                                            <dt class="text-sm font-medium text-gray-500">Nationality</dt>
+                                            <dd class="mt-1 text-sm text-gray-900"
+                                                x-text="selectedCase ? selectedCase.donor_details.nationality : ''">
+                                            </dd>
+                                        </div>
+                                        <div class="sm:col-span-1">
+                                            <dt class="text-sm font-medium text-gray-500">Gender</dt>
+                                            <dd class="mt-1 text-sm text-gray-900"
+                                                x-text="selectedCase ? selectedCase.donor_details.gender : ''"></dd>
+                                        </div>
+                                        <div class="sm:col-span-1">
+                                            <dt class="text-sm font-medium text-gray-500">Address</dt>
+                                            <dd class="mt-1 text-sm text-gray-900"
+                                                x-text="selectedCase ? selectedCase.donor_details.address || 'N/A' : ''">
+                                            </dd>
+                                        </div>
+                                    </dl>
+                                </div>
+
+                                <div class="border-t border-gray-200 pt-6">
+                                    <h3 class="text-sm font-medium text-gray-500">Donation History</h3>
+                                    <dl class="mt-2 grid grid-cols-1 gap-x-4 gap-y-4 sm:grid-cols-2">
+                                        <div class="sm:col-span-1">
+                                            <dt class="text-sm font-medium text-gray-500">Last Donation</dt>
+                                            <dd class="mt-1 text-sm text-gray-900"
+                                                x-text="selectedCase && selectedCase.donor_details.last_donation_date ? selectedCase.donor_details.last_donation_date : 'Never'">
+                                            </dd>
+                                        </div>
+                                        <div class="sm:col-span-1">
+                                            <dt class="text-sm font-medium text-gray-500">Next Eligible</dt>
+                                            <dd class="mt-1 text-sm text-gray-900"
+                                                x-text="selectedCase && selectedCase.donor_details.next_eligible_date ? selectedCase.donor_details.next_eligible_date : 'Available Now'">
+                                            </dd>
+                                        </div>
+                                    </dl>
+                                </div>
+
+                                <div class="border-t border-gray-200 pt-6 flex gap-4">
+                                    <button @click="startDonation(selectedCase.donor)"
+                                        class="flex-1 inline-flex justify-center items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-brand-600 hover:bg-brand-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-brand-500">
+                                        Start New Donation
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>

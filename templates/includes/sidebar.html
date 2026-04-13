@@ -1,0 +1,71 @@
+<aside class="w-64 bg-gray-900 text-white hidden md:block flex-shrink-0">
+    <div class="h-16 flex items-center justify-center bg-red-700 shadow-md">
+        <h1 class="text-xl font-bold tracking-wider uppercase">Blood Bank</h1>
+    </div>
+    <nav class="mt-5 px-2">
+        <a href="/"
+            class="group flex items-center px-2 py-2 text-base leading-6 font-medium rounded-md text-white hover:bg-gray-700 focus:outline-none focus:bg-gray-700 transition ease-in-out duration-150">
+            📊 Dashboard
+        </a>
+
+        <div class="mt-4">
+            <h3 class="px-3 text-xs leading-4 font-semibold text-gray-500 uppercase tracking-wider">
+                Donation Process
+            </h3>
+            <a href="/donors/"
+                class="mt-1 group flex items-center px-2 py-2 text-base leading-6 font-medium rounded-md text-gray-300 hover:text-white hover:bg-gray-700 focus:outline-none focus:text-white focus:bg-gray-700 transition ease-in-out duration-150">
+                👥 Donors Registry
+            </a>
+            <a href="/donors/list/"
+                class="mt-1 group flex items-center px-2 py-2 text-base leading-6 font-medium rounded-md text-gray-300 hover:text-white hover:bg-gray-700 focus:outline-none focus:text-white focus:bg-gray-700 transition ease-in-out duration-150">
+                doners
+            </a>
+            <a href="{% url 'not_completed_donors' %}"
+                class="mt-1 group flex items-center px-2 py-2 text-base leading-6 font-medium rounded-md text-gray-300 hover:text-white hover:bg-gray-700 focus:outline-none focus:text-white focus:bg-gray-700 transition ease-in-out duration-150">
+                ⚠️ Not Completed
+            </a>
+            <a href="{% url 'deferred_donors' %}"
+                class="mt-1 group flex items-center px-2 py-2 text-base leading-6 font-medium rounded-md text-gray-300 hover:text-white hover:bg-gray-700 focus:outline-none focus:text-white focus:bg-gray-700 transition ease-in-out duration-150">
+                🚫 Rejected Donors
+            </a>
+            <a href="/donations/"
+                class="mt-1 group flex items-center px-2 py-2 text-base leading-6 font-medium rounded-md text-gray-300 hover:text-white hover:bg-gray-700 focus:outline-none focus:text-white focus:bg-gray-700 transition ease-in-out duration-150">
+                🩸 All Donations
+            </a>
+        </div>
+
+        <div class="mt-4">
+            <h3 class="px-3 text-xs leading-4 font-semibold text-gray-500 uppercase tracking-wider">
+                Inventory & Labs
+            </h3>
+            <a href="/inventory/"
+                class="mt-1 group flex items-center px-2 py-2 text-base leading-6 font-medium rounded-md text-gray-300 hover:text-white hover:bg-gray-700 focus:outline-none focus:text-white focus:bg-gray-700 transition ease-in-out duration-150">
+                📦 Inventory
+            </a>
+            <a href="/test-results/"
+                class="mt-1 group flex items-center px-2 py-2 text-base leading-6 font-medium rounded-md text-gray-300 hover:text-white hover:bg-gray-700 focus:outline-none focus:text-white focus:bg-gray-700 transition ease-in-out duration-150">
+                🧪 Lab Results
+            </a>
+        </div>
+
+        <div class="mt-4">
+            <h3 class="px-3 text-xs leading-4 font-semibold text-gray-500 uppercase tracking-wider">
+                Orders & Reports
+            </h3>
+            <a href="/requests/"
+                class="mt-1 group flex items-center px-2 py-2 text-base leading-6 font-medium rounded-md text-gray-300 hover:text-white hover:bg-gray-700 focus:outline-none focus:text-white focus:bg-gray-700 transition ease-in-out duration-150">
+                🏥 Blood Requests
+            </a>
+        </div>
+
+        <div class="mt-4">
+            <h3 class="px-3 text-xs leading-4 font-semibold text-gray-500 uppercase tracking-wider">
+                Configuration
+            </h3>
+            <a href="{% url 'processing_rules' %}"
+                class="mt-1 group flex items-center px-2 py-2 text-base leading-6 font-medium rounded-md text-gray-300 hover:text-white hover:bg-gray-700 focus:outline-none focus:text-white focus:bg-gray-700 transition ease-in-out duration-150">
+                ⚙️ Processing Rules
+            </a>
+        </div>
+    </nav>
+</aside>

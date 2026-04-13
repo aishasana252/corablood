@@ -1,0 +1,74 @@
+{% extends 'base.html' %}
+
+{% block title %}Component Near Expired | CoraBlood AI{% endblock %}
+{% block header %}Component Near Expired{% endblock %}
+
+{% block content %}
+<div class="space-y-6">
+
+    <!-- Table Container -->
+    <div class="bg-white rounded-lg border border-slate-200 shadow-sm overflow-hidden">
+        <div class="p-6 border-b border-slate-100">
+            <h2 class="text-lg font-bold text-slate-800">Component Near Expired</h2>
+        </div>
+
+        <div class="overflow-x-auto">
+            <table class="min-w-full divide-y divide-slate-100">
+                <thead class="bg-slate-50">
+                    <tr>
+                        <th class="px-6 py-3 text-left text-xs font-bold text-slate-700 uppercase">UnitNumber</th>
+                        <th class="px-6 py-3 text-left text-xs font-bold text-slate-700 uppercase">Donation</th>
+                        <th class="px-6 py-3 text-left text-xs font-bold text-slate-700 uppercase">ComponentType</th>
+                        <th class="px-6 py-3 text-left text-xs font-bold text-slate-700 uppercase">BloodGroup</th>
+                        <th class="px-6 py-3 text-left text-xs font-bold text-slate-700 uppercase">Volume</th>
+                        <th class="px-6 py-3 text-left text-xs font-bold text-slate-700 uppercase">ExpireDate</th>
+                        <th class="px-6 py-3 text-left text-xs font-bold text-slate-700 uppercase">Status</th>
+                        <th class="px-6 py-3 text-left text-xs font-bold text-slate-700 uppercase">Creation</th>
+                        <th class="px-6 py-3 text-left text-xs font-bold text-slate-700 uppercase">Diff In Days</th>
+                    </tr>
+                </thead>
+                <tbody class="bg-white divide-y divide-slate-50">
+                    {% for unit in units %}
+                    <tr class="hover:bg-slate-50">
+                        <td class="px-6 py-4 text-xs font-bold text-slate-600">{{ unit.unit_number }}</td>
+                        <td class="px-6 py-4 text-xs font-bold text-brand-500">{{ unit.donation_code }}</td>
+                        <td class="px-6 py-4 text-xs text-slate-600">{{ unit.component_type }}</td>
+                        <td class="px-6 py-4 text-xs text-slate-600 font-bold uppercase">{{ unit.blood_group }}</td>
+                        <td class="px-6 py-4 text-xs">
+                            <span class="bg-emerald-500 text-white px-2 py-1 rounded font-bold text-[10px]">{{
+                                unit.volume }}</span>
+                        </td>
+                        <td class="px-6 py-4 text-xs text-slate-600">{{ unit.expire_date }}</td>
+                        <td class="px-6 py-4 text-xs">
+                            <div class="space-y-1">
+                                <span
+                                    class="bg-emerald-500 text-white px-2 py-1 rounded font-bold text-[10px] block w-fit">Inventory</span>
+                                <div class="text-[10px] text-slate-500">
+                                    <div>On : {{ unit.inventory_date }}</div>
+                                    <div>By : {{ unit.inventory_by }}</div>
+                                </div>
+                            </div>
+                        </td>
+                        <td class="px-6 py-4 text-xs">
+                            <div class="text-[10px] text-slate-500">
+                                <div>CreatedBy: {{ unit.created_by }}</div>
+                                <div>CreatedDate: {{ unit.created_date }}</div>
+                            </div>
+                        </td>
+                        <td class="px-6 py-4 text-xs">
+                            <span class="bg-red-500 text-white px-3 py-1 rounded shadow-sm font-bold text-xs">{{
+                                unit.diff_in_days }} days</span>
+                        </td>
+                    </tr>
+                    {% empty %}
+                    <tr>
+                        <td colspan="9" class="px-6 py-12 text-center text-slate-400 text-sm">No units near expiry
+                            found.</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+{% endblock %}

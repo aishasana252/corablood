@@ -1,0 +1,88 @@
+{% extends 'donors/portal/base.html' %}
+{% load static %}
+
+{% block title %}Edit Profile - CoraBlood{% endblock %}
+
+{% block content %}
+    <!-- Main Content -->
+    <div class="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8 py-10 pb-20">
+        
+        <div class="mb-8">
+            <h1 class="text-3xl font-display font-bold text-slate-900 mb-2">My Profile</h1>
+            <p class="text-slate-500">Update your personal information and contact details.</p>
+        </div>
+
+        {% if messages %}
+        <div class="mb-8">
+            {% for message in messages %}
+            <div class="p-4 rounded-xl text-sm font-medium flex items-center shadow-sm {% if message.tags == 'error' %}bg-red-50 text-red-700 border border-red-100{% else %}bg-emerald-50 text-emerald-700 border border-emerald-100{% endif %}">
+                {% if message.tags == 'error' %}
+                <svg class="w-5 h-5 mr-3 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" /></svg>
+                {% else %}
+                <svg class="w-5 h-5 mr-3 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+                {% endif %}
+                {{ message }}
+            </div>
+            {% endfor %}
+        </div>
+        {% endif %}
+
+        <div class="bg-white rounded-3xl shadow-xl shadow-slate-200/50 border border-slate-100 p-6 sm:p-10 relative overflow-hidden">
+            <div class="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-brand-400 to-brand-600"></div>
+            
+            <form method="POST" action="{% url 'portal:profile' %}" class="space-y-6">
+                {% csrf_token %}
+                
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-6">
+                    <div>
+                        <label class="block text-sm font-semibold text-slate-700 mb-1.5">Full Name</label>
+                        <input type="text" name="full_name" value="{{ donor.full_name }}" required class="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-brand-500 focus:bg-white outline-none transition-all text-slate-800 font-medium">
+                    </div>
+                    <div>
+                        <label class="block text-sm font-semibold text-slate-700 mb-1.5 text-slate-500">National ID (Cannot be changed)</label>
+                        <input type="text" value="{{ donor.national_id }}" readonly disabled class="w-full px-4 py-3 bg-slate-100 border border-slate-200 rounded-xl text-slate-500 font-medium cursor-not-allowed">
+                    </div>
+                </div>
+
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-6">
+                    <div>
+                        <label class="block text-sm font-semibold text-slate-700 mb-1.5">Phone Number</label>
+                        <input type="text" name="mobile" value="{{ donor.mobile }}" required class="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-brand-500 focus:bg-white outline-none transition-all text-slate-800 font-medium">
+                    </div>
+                    <div>
+                        <label class="block text-sm font-semibold text-slate-700 mb-1.5">Date of Birth</label>
+                        <input type="date" name="dob" value="{{ donor.dob|date:'Y-m-d' }}" required class="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-brand-500 focus:bg-white outline-none transition-all text-slate-800 font-medium">
+                    </div>
+                </div>
+
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-6">
+                    <div>
+                        <label class="block text-sm font-semibold text-slate-700 mb-1.5">Email Address</label>
+                        <input type="email" name="email" value="{{ donor.email }}" required class="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-brand-500 focus:bg-white outline-none transition-all text-slate-800 font-medium">
+                    </div>
+                    <div>
+                        <label class="block text-sm font-semibold text-slate-700 mb-1.5">Blood Type</label>
+                        <select name="blood_type" class="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-brand-500 focus:bg-white outline-none transition-all text-slate-700 font-medium">
+                            <option value="UNKNOWN" {% if donor.blood_group == 'UNKNOWN' %}selected{% endif %}>I don't know (Pending Lab)</option>
+                            <option value="A+" {% if donor.blood_group == 'A+' %}selected{% endif %}>A+</option>
+                            <option value="A-" {% if donor.blood_group == 'A-' %}selected{% endif %}>A-</option>
+                            <option value="B+" {% if donor.blood_group == 'B+' %}selected{% endif %}>B+</option>
+                            <option value="B-" {% if donor.blood_group == 'B-' %}selected{% endif %}>B-</option>
+                            <option value="AB+" {% if donor.blood_group == 'AB+' %}selected{% endif %}>AB+</option>
+                            <option value="AB-" {% if donor.blood_group == 'AB-' %}selected{% endif %}>AB-</option>
+                            <option value="O+" {% if donor.blood_group == 'O+' %}selected{% endif %}>O+</option>
+                            <option value="O-" {% if donor.blood_group == 'O-' %}selected{% endif %}>O-</option>
+                        </select>
+                    </div>
+                </div>
+                
+                <div class="pt-4 border-t border-slate-100 flex items-center justify-end gap-3 mt-4">
+                    <a href="{% url 'portal:dashboard' %}" class="px-6 py-3 rounded-xl font-bold text-slate-600 hover:bg-slate-100 transition-colors">Cancel</a>
+                    <button type="submit" class="bg-gradient-to-r from-brand-600 to-brand-500 hover:from-brand-700 hover:to-brand-600 text-white font-bold py-3 px-8 rounded-xl transition-all shadow-lg shadow-brand-500/40 transform active:scale-95">
+                        Save Changes
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+{% endblock %}

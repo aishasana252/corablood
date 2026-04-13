@@ -1,0 +1,147 @@
+{% extends 'base.html' %}
+
+{% block title %}Blood Requests Listing | CoraBlood AI{% endblock %}
+{% block header %}Blood Requests Listing{% endblock %}
+
+{% block content %}
+<div class="space-y-6" x-data="{ expanded: true }">
+
+    <!-- Filters Section -->
+    <div class="bg-white rounded-lg border border-slate-200 shadow-sm p-6 relative">
+        <div class="flex justify-end absolute top-6 right-6">
+            <a href="{% url 'blood_request_create' %}"
+                class="px-4 py-2 bg-sky-600 hover:bg-sky-700 text-white text-sm font-semibold rounded shadow-sm transition-colors flex items-center">
+                <svg class="w-4 h-4 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
+                </svg>
+                + New Blood Request
+            </a>
+        </div>
+
+        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 pr-40">
+            <!-- MRN Filter -->
+            <div class="flex items-center gap-2">
+                <label class="w-20 text-sm font-medium text-slate-700">MRN</label>
+                <input type="text" placeholder="MRN"
+                    class="flex-1 rounded border-slate-300 px-3 py-2 text-sm focus:ring-brand-500 focus:border-brand-500">
+            </div>
+
+            <!-- Code Filter -->
+            <div class="flex items-center gap-2">
+                <label class="w-20 text-sm font-medium text-slate-700">Code</label>
+                <input type="text" placeholder="Code"
+                    class="flex-1 rounded border-slate-300 px-3 py-2 text-sm focus:ring-brand-500 focus:border-brand-500">
+            </div>
+
+            <!-- Emergency Filter -->
+            <div class="flex items-center gap-2">
+                <label class="w-20 text-sm font-medium text-slate-700">Emergency</label>
+                <select
+                    class="flex-1 rounded border-slate-300 px-3 py-2 text-sm focus:ring-brand-500 focus:border-brand-500">
+                    <option>All</option>
+                    <option>Yes</option>
+                    <option>No</option>
+                </select>
+            </div>
+
+            <!-- Priority Filter -->
+            <div class="flex items-center gap-2">
+                <label class="w-20 text-sm font-medium text-slate-700">Priority</label>
+                <select
+                    class="flex-1 rounded border-slate-300 px-3 py-2 text-sm focus:ring-brand-500 focus:border-brand-500">
+                    <option>All</option>
+                    <option>STAT</option>
+                    <option>Normal</option>
+                </select>
+            </div>
+        </div>
+    </div>
+
+    <!-- Results Table -->
+    <div class="bg-white rounded-lg border border-slate-200 shadow-sm overflow-hidden">
+        <div class="overflow-x-auto">
+            <table class="min-w-full divide-y divide-slate-100">
+                <thead class="bg-white">
+                    <tr>
+                        <th class="px-4 py-3 text-left text-xs font-bold text-slate-900 uppercase tracking-wider">#</th>
+                        <th class="px-4 py-3 text-left text-xs font-bold text-slate-900 uppercase tracking-wider">MRN
+                        </th>
+                        <th class="px-4 py-3 text-left text-xs font-bold text-slate-900 uppercase tracking-wider">
+                            Priority</th>
+                        <th class="px-4 py-3 text-left text-xs font-bold text-slate-900 uppercase tracking-wider">
+                            RequestType</th>
+                        <th class="px-4 py-3 text-left text-xs font-bold text-slate-900 uppercase tracking-wider w-1/4">
+                            Diagnosis</th>
+                        <th class="px-4 py-3 text-left text-xs font-bold text-slate-900 uppercase tracking-wider">
+                            BloodGroup</th>
+                        <th class="px-4 py-3 text-left text-xs font-bold text-slate-900 uppercase tracking-wider">
+                            Requested</th>
+                        <th class="px-4 py-3 text-left text-xs font-bold text-slate-900 uppercase tracking-wider">
+                            Emergency</th>
+                        <th class="px-4 py-3 text-left text-xs font-bold text-slate-900 uppercase tracking-wider">Status
+                        </th>
+                        <th class="px-4 py-3 text-left text-xs font-bold text-slate-900 uppercase tracking-wider">
+                            Creation</th>
+                        <th class="px-4 py-3 text-right text-xs font-bold text-slate-900 uppercase tracking-wider">
+                            Actions</th>
+                    </tr>
+                </thead>
+                <tbody class="divide-y divide-slate-50">
+                    {% for item in requests %}
+                    <tr class="hover:bg-slate-50 align-top">
+                        <td class="px-4 py-4 text-xs font-bold text-slate-800">{{ item.code }}</td>
+                        <td class="px-4 py-4 text-xs text-slate-600">{{ item.mrn }}</td>
+                        <td class="px-4 py-4 text-xs text-slate-600 font-medium">{{ item.priority }}</td>
+                        <td class="px-4 py-4 text-xs text-slate-600">{{ item.request_type }}</td>
+                        <td class="px-4 py-4 text-xs text-slate-600">{{ item.diagnosis }}</td>
+                        <td class="px-4 py-4 text-xs font-bold text-slate-800">{{ item.blood_group }}</td>
+                        <td class="px-4 py-4 text-xs text-slate-600 space-y-1">
+                            {% for req in item.requested %}
+                            <div class="whitespace-nowrap">{{ req|safe }}</div>
+                            {% endfor %}
+                        </td>
+                        <td class="px-4 py-4 text-xs text-slate-600 space-y-0.5">
+                            <div class="flex items-center gap-1">Emergency : {% if item.is_emergency %}<span
+                                    class="text-green-600 font-bold">✔</span>{% else %}<span
+                                    class="text-red-600 font-bold">✖</span>{% endif %}</div>
+                            <div class="flex items-center gap-1">WithOut NAT : <span
+                                    class="text-green-600 font-bold">✔</span></div>
+                            <div class="flex items-center gap-1">UnCrossmatched: <span
+                                    class="text-red-600 font-bold text-[10px]">✖</span></div>
+                            <div class="flex items-center gap-1">Type Specific : <span
+                                    class="text-red-600 font-bold text-[10px]">✖</span></div>
+                            <div class="flex items-center gap-1">Verbal Order : <span
+                                    class="text-red-600 font-bold text-[10px]">✖</span></div>
+                        </td>
+                        <td class="px-4 py-4 text-xs text-slate-600">
+                            {% if item.status == 'Received' %}
+                            <span
+                                class="px-2 py-1 bg-slate-100 border border-slate-200 rounded text-[10px] text-slate-600 mb-1 inline-block">Recieved
+                                By Blood Bank</span>
+                            <div class="text-[10px] text-slate-500 mt-1">
+                                <div>On : {{ item.received_date }}</div>
+                                <div>By : {{ item.received_by }}</div>
+                                <div class="mt-1 leading-tight">Note: Sample Recived By BloodBank</div>
+                            </div>
+                            {% endif %}
+                        </td>
+                        <td class="px-4 py-4 text-[10px] text-slate-500 leading-tight">
+                            <div>CreatedBy: {{ item.created_by }}</div>
+                            <div>CreatedDate: {{ item.created_date }}</div>
+                            <div class="mt-1">ModifiedBy: {{ item.modified_by }}</div>
+                            <div>ModifiedDate: {{ item.modified_date }}</div>
+                        </td>
+                        <td class="px-4 py-4 text-right align-top">
+                            <button
+                                class="px-3 py-1 bg-sky-500 hover:bg-sky-600 text-white text-xs font-medium rounded shadow-sm transition-colors">
+                                Actions
+                            </button>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+{% endblock %}

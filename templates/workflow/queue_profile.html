@@ -1,0 +1,64 @@
+{% extends 'base.html' %}
+{% block title %}Profile Approval Queue | CoraBlood{% endblock %}
+{% block header %}Queue: Profile Approval{% endblock %}
+
+{% block content %}
+<div class="space-y-6">
+    <!-- Stats Cards -->
+    <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+        <div class="bg-indigo-50 rounded-2xl p-6 border border-indigo-100 flex items-center justify-between">
+            <div>
+                <p class="text-sm font-bold text-indigo-500 uppercase">Pending Approval</p>
+                <p class="text-3xl font-display font-bold text-indigo-900 mt-1">{{ workflows.count }}</p>
+            </div>
+            <div class="w-12 h-12 bg-white rounded-xl flex items-center justify-center shadow-sm">
+                <svg class="w-6 h-6 text-indigo-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                        d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                </svg>
+            </div>
+        </div>
+    </div>
+
+    <!-- Queue List -->
+    <div class="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden">
+        <table class="w-full text-left border-collapse">
+            <thead class="bg-slate-50 text-slate-500 text-xs uppercase font-bold">
+                <tr>
+                    <th class="px-6 py-4">Time</th>
+                    <th class="px-6 py-4">Donor</th>
+                    <th class="px-6 py-4">Details</th>
+                    <th class="px-6 py-4 text-right">Action</th>
+                </tr>
+            </thead>
+            <tbody class="divide-y divide-slate-100">
+                {% for wf in workflows %}
+                <tr class="hover:bg-slate-50 transition-colors">
+                    <td class="px-6 py-4 text-sm font-bold text-slate-500 font-mono">
+                        {{ wf.created_at|time:"H:i" }}
+                    </td>
+                    <td class="px-6 py-4">
+                        <div class="font-bold text-slate-900">{{ wf.donor.full_name }}</div>
+                        <div class="text-xs text-slate-400">ID: {{ wf.donor.national_id }}</div>
+                    </td>
+                    <td class="px-6 py-4 text-sm text-slate-600">
+                        Pending Registration Confirmation
+                    </td>
+                    <td class="px-6 py-4 text-right">
+                        <a href="{% url 'donor_workflow' wf.donor.id %}"
+                            class="inline-flex items-center px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white font-bold rounded-lg text-sm transition-all shadow-lg shadow-indigo-500/30">
+                            Verify Profile &rarr;
+                        </a>
+                    </td>
+                </tr>
+                {% empty %}
+                <tr>
+                    <td colspan="4" class="px-6 py-12 text-center text-slate-400 italic">No donors waiting for profile
+                        approval.</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+{% endblock %}

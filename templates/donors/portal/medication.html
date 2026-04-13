@@ -1,0 +1,128 @@
+{% extends 'donors/portal/base.html' %}
+{% load static %}
+
+{% block dashboard_content %}
+<div class="max-w-5xl mx-auto py-8 px-4" x-data="{ 
+    isOnMed: false,
+    selectedMedications: [],
+    
+    init() {
+        // Find if any checkbox is already checked (if editing)
+        this.selectedMedications = Array.from(document.querySelectorAll('input[name=medications]:checked')).map(i => i.value);
+        if (this.selectedMedications.length > 0) this.isOnMed = true;
+    }
+}">
+    <div class="mb-10 text-center md:text-left flex flex-col md:flex-row md:items-end justify-between gap-6">
+        <div>
+            <h1 class="text-4xl font-display font-bold text-slate-800 tracking-tight">Medication Review</h1>
+            <p class="text-lg text-slate-500 mt-2 font-medium">Please declare any medications you have taken recently. <br class="hidden md:block"> Some medications may require a temporary deferral period.</p>
+        </div>
+        <div class="bg-blue-50 px-5 py-2.5 rounded-2xl border border-blue-100 flex items-center gap-2.5">
+            <span class="w-3.5 h-3.5 bg-blue-500 rounded-full animate-pulse"></span>
+            <span class="text-sm font-black text-blue-700 uppercase tracking-widest text-nowrap">Step 2 of 2</span>
+        </div>
+    </div>
+
+    <form method="POST" class="space-y-10">
+        {% csrf_token %}
+        
+        <!-- Premium Selection Card -->
+        <div class="bg-white rounded-[2.5rem] p-10 shadow-2xl shadow-slate-200/50 border border-slate-100/60 relative overflow-hidden">
+            <div class="absolute top-0 right-0 w-32 h-32 bg-brand-50 rounded-full blur-3xl -mr-16 -mt-16 opacity-40"></div>
+            
+            <div class="relative z-10 flex flex-col items-center gap-8">
+                <div class="text-center">
+                    <h3 class="text-2xl font-bold text-slate-800">Current Medication Status</h3>
+                    <p class="text-slate-500 mt-1">Are you currently taking any regular medications?</p>
+                </div>
+                
+                <div class="flex p-2 bg-slate-100/80 backdrop-blur-sm rounded-[2rem] w-full max-w-lg border border-slate-200/60">
+                    <button type="button" @click="isOnMed = false" 
+                        :class="!isOnMed ? 'bg-white text-slate-900 shadow-xl' : 'text-slate-500 hover:text-slate-700'" 
+                        class="flex-1 py-4 px-8 rounded-[1.5rem] font-black italic transition-all duration-300">
+                        NO, I AM NOT
+                    </button>
+                    <button type="button" @click="isOnMed = true" 
+                        :class="isOnMed ? 'bg-brand-500 text-white shadow-xl shadow-brand-200' : 'text-slate-500 hover:text-slate-700'" 
+                        class="flex-1 py-4 px-8 rounded-[1.5rem] font-black italic transition-all duration-300">
+                        YES, I AM
+                    </button>
+                    <input type="hidden" name="is_on_medication" :value="isOnMed">
+                </div>
+            </div>
+        </div>
+
+        <!-- Categorized Medication List -->
+        <div x-show="isOnMed" x-transition.opacity.duration.400ms class="space-y-12">
+            {% for category, items in categories.items %}
+            <div class="space-y-6">
+                <div class="flex items-center gap-4 px-4">
+                    <div class="h-px bg-slate-200 flex-1"></div>
+                    <h4 class="text-sm font-black text-slate-400 uppercase tracking-[0.2em]">{{ category }}</h4>
+                    <div class="h-px bg-slate-200 flex-1"></div>
+                </div>
+                
+                <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                    {% for med in items %}
+                    <label class="group relative bg-white p-6 rounded-[2rem] border border-slate-100 shadow-sm cursor-pointer hover:shadow-xl hover:border-brand-200 transition-all duration-300 has-[:checked]:bg-brand-50/40 has-[:checked]:border-brand-400 has-[:checked]:ring-4 has-[:checked]:ring-brand-50">
+                        <input type="checkbox" name="medications" value="{{ med.id }}" class="hidden checkbox-input">
+                        
+                        <div class="flex items-start justify-between gap-4">
+                            <div class="flex-1">
+                                <span class="block text-lg font-bold text-slate-800 group-hover:text-brand-700 transition-colors">{{ med.name }}</span>
+                                <div class="mt-3 flex flex-wrap gap-2">
+                                    {% if med.deferral_days > 0 %}
+                                    <span class="px-2.5 py-1 bg-amber-50 text-amber-700 text-[10px] font-black uppercase tracking-wider rounded-lg border border-amber-100 italic">
+                                        Wait {{ med.deferral_days }} Days
+                                    </span>
+                                    {% elif med.deferral_days == 0 %}
+                                    <span class="px-2.5 py-1 bg-rose-50 text-rose-700 text-[10px] font-black uppercase tracking-wider rounded-lg border border-rose-100 italic">
+                                        Permanent Deferral
+                                    </span>
+                                    {% endif %}
+                                </div>
+                            </div>
+                            
+                            <div class="w-8 h-8 rounded-full border-2 border-slate-200 flex items-center justify-center transition-all group-has-[:checked]:bg-brand-500 group-has-[:checked]:border-brand-500 group-has-[:checked]:scale-110">
+                                <svg class="w-4 h-4 text-white opacity-0 group-has-[:checked]:opacity-100" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="4" d="M5 13l4 4L19 7" />
+                                </svg>
+                            </div>
+                        </div>
+                    </label>
+                    {% endfor %}
+                </div>
+            </div>
+            {% endfor %}
+
+            <!-- Free Text Area -->
+            <div class="bg-white rounded-[2.5rem] p-10 shadow-xl shadow-slate-200/40 border border-slate-100">
+                <div class="flex items-center gap-3 mb-6">
+                    <div class="w-10 h-10 bg-brand-50 rounded-xl flex items-center justify-center text-brand-500">
+                        <svg class="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" /></svg>
+                    </div>
+                    <div>
+                        <h4 class="text-xl font-bold text-slate-800">Unlisted Medication</h4>
+                        <p class="text-sm text-slate-500 mt-0.5">If your medication isn't listed above, please specify here.</p>
+                    </div>
+                </div>
+                
+                <textarea name="notes" rows="4" 
+                    class="w-full rounded-2xl bg-slate-50 border-slate-100 focus:bg-white focus:border-brand-500 focus:ring-4 focus:ring-brand-50 p-6 text-slate-700 font-medium transition-all" 
+                    placeholder="Enter medication name and reason..."></textarea>
+            </div>
+        </div>
+
+        <!-- Footer Actions -->
+        <div class="flex flex-col sm:flex-row items-center justify-between gap-6 pt-6">
+            <a href="{% url 'portal:dashboard' %}" class="w-full sm:w-auto px-10 py-4 text-slate-400 font-black italic hover:text-slate-800 transition-colors text-center uppercase tracking-widest">
+                Cancel / رجوع
+            </a>
+            <button type="submit" 
+                class="w-full sm:w-auto px-16 py-5 bg-brand-500 text-white rounded-[2rem] font-black italic shadow-2xl shadow-brand-200 hover:bg-brand-600 hover:-translate-y-1 active:scale-95 transition-all uppercase tracking-widest text-lg">
+                Continue to Dashboard
+            </button>
+        </div>
+    </form>
+</div>
+{% endblock %}

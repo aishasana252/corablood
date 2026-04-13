@@ -1,0 +1,425 @@
+{% extends 'base.html' %}
+
+{% block title %}Request View {{ req.id }} | CoraBlood AI{% endblock %}
+{% block header %}
+<span x-text="lang === 'en' ? 'Request View' : 'عرض الطلب'"></span>
+{% endblock %}
+
+{% block header_actions %}
+<a href="{% url 'component_culture' %}"
+    class="bg-[#2D89C8] hover:bg-[#2070a8] text-white text-xs font-bold py-1.5 px-4 rounded shadow-sm transition-colors">
+    back
+</a>
+{% endblock %}
+
+{% block content %}
+<div class="space-y-6" x-data="{ tab: 'Header' }">
+
+    <!-- Top Info Bar -->
+    <div
+        class="flex items-center gap-4 text-xs font-bold text-[#EF4444] bg-red-50 px-4 py-2 rounded-lg border border-red-100">
+        <span>Request Code : <span class="text-slate-700">{{ req.id }}</span></span>
+        <span>Request Date : <span class="text-slate-700">{{ req.date }}</span></span>
+    </div>
+
+    <!-- Navigation Tabs -->
+    <div class="border-b border-slate-200">
+        <nav class="-mb-px flex space-x-6 justify-end overflow-x-auto" aria-label="Tabs">
+            <button @click="tab = 'Corrective Action'"
+                :class="tab === 'Corrective Action' ? 'border-[#EF4444] text-[#EF4444]' : 'border-transparent text-slate-500 hover:text-slate-700 hover:border-slate-300'"
+                class="whitespace-nowrap py-2 px-1 border-b-2 font-medium text-xs transition-colors">
+                Corrective Action 0
+            </button>
+            <button @click="tab = 'Final Result'"
+                :class="tab === 'Final Result' ? 'border-[#EF4444] text-[#EF4444]' : 'border-transparent text-slate-500 hover:text-slate-700 hover:border-slate-300'"
+                class="whitespace-nowrap py-2 px-1 border-b-2 font-medium text-xs transition-colors">
+                Final Result / 5D <span class="text-red-500 text-[10px] ml-0.5">✖</span>
+            </button>
+            <button @click="tab = 'Preliminary Result'"
+                :class="tab === 'Preliminary Result' ? 'border-green-500 text-green-600' : 'border-transparent text-slate-500 hover:text-slate-700 hover:border-slate-300'"
+                class="whitespace-nowrap py-2 px-1 border-b-2 font-medium text-xs transition-colors">
+                Preliminary Result / 48H <span class="text-green-500 text-[10px] ml-0.5">✔</span>
+            </button>
+            <button @click="tab = 'Mandatory Info'"
+                :class="tab === 'Mandatory Info' ? 'border-green-500 text-green-600' : 'border-transparent text-slate-500 hover:text-slate-700 hover:border-slate-300'"
+                class="whitespace-nowrap py-2 px-1 border-b-2 font-medium text-xs transition-colors">
+                Mandatory Info <span class="text-green-500 text-[10px] ml-0.5">✔</span>
+            </button>
+            <button @click="tab = 'Receiving'"
+                :class="tab === 'Receiving' ? 'border-green-500 text-green-600' : 'border-transparent text-slate-500 hover:text-slate-700 hover:border-slate-300'"
+                class="whitespace-nowrap py-2 px-1 border-b-2 font-medium text-xs transition-colors">
+                Receiving <span class="text-green-500 text-[10px] ml-0.5">✔</span>
+            </button>
+            <button @click="tab = 'Units Included'"
+                :class="tab === 'Units Included' ? 'border-slate-500 text-slate-900' : 'border-transparent text-slate-500 hover:text-slate-700 hover:border-slate-300'"
+                class="whitespace-nowrap py-2 px-1 border-b-2 font-medium text-xs transition-colors">
+                Units Included
+            </button>
+            <button @click="tab = 'Header'"
+                :class="tab === 'Header' ? 'border-slate-500 text-slate-900' : 'border-transparent text-slate-500 hover:text-slate-700 hover:border-slate-300'"
+                class="whitespace-nowrap py-2 px-1 border-b-2 font-medium text-xs transition-colors">
+                Header
+            </button>
+        </nav>
+    </div>
+
+    <!-- Content Sections -->
+    <div
+        class="bg-white rounded-xl shadow-[0_2px_15px_-3px_rgba(0,0,0,0.07),0_10px_20px_-2px_rgba(0,0,0,0.04)] border border-slate-100 p-6 min-h-[500px]">
+
+        <!-- Header Tab -->
+        <div x-show="tab === 'Header'" class="grid grid-cols-1 md:grid-cols-2 gap-12"
+            x-transition:enter="transition ease-out duration-300" x-transition:enter-start="opacity-0 translate-y-2"
+            x-transition:enter-end="opacity-100 translate-y-0">
+            <!-- Left Column -->
+            <div class="space-y-6">
+                <div class="grid grid-cols-[160px_1fr] gap-4 items-center">
+                    <label class="text-[11px] font-bold text-slate-600">Code:</label>
+                    <span class="text-xs text-slate-500 font-medium">{{ req.id }}</span>
+                </div>
+                <div class="grid grid-cols-[160px_1fr] gap-4 items-center">
+                    <label class="text-[11px] font-bold text-slate-600">Request Type:</label>
+                    <span class="text-xs text-slate-500 font-medium">{{ req.type }}</span>
+                </div>
+                <div class="grid grid-cols-[160px_1fr] gap-4 items-center">
+                    <label class="text-[11px] font-bold text-slate-600">Aerobic Number:</label>
+                    <span class="text-xs text-slate-500 font-medium">{{ req.aero_num }}</span>
+                </div>
+                <div class="grid grid-cols-[160px_1fr] gap-4 items-center">
+                    <label class="text-[11px] font-bold text-slate-600">Anaerobic Number:</label>
+                    <span class="text-xs text-slate-500 font-medium">{{ req.anaero_num }}</span>
+                </div>
+                <div class="grid grid-cols-[160px_1fr] gap-4 items-center">
+                    <label class="text-[11px] font-bold text-slate-600">Aerobic Bottle Lot Number:</label>
+                    <span class="text-xs text-slate-500 font-medium">{{ req.aero_lot }}</span>
+                </div>
+                <div class="grid grid-cols-[160px_1fr] gap-4 items-center">
+                    <label class="text-[11px] font-bold text-slate-600">Aerobic Bottle ExpiryDate:</label>
+                    <span class="text-xs text-slate-500 font-medium">{{ req.aero_exp }}</span>
+                </div>
+                <div class="grid grid-cols-[160px_1fr] gap-4 items-center">
+                    <label class="text-[11px] font-bold text-slate-600">Anaerobic Bottle Lot Number:</label>
+                    <span class="text-xs text-slate-500 font-medium">{{ req.anaero_lot }}</span>
+                </div>
+                <div class="grid grid-cols-[160px_1fr] gap-4 items-center">
+                    <label class="text-[11px] font-bold text-slate-600">Anaerobic Bottle ExpiryDate:</label>
+                    <span class="text-xs text-slate-500 font-medium">{{ req.anaero_exp }}</span>
+                </div>
+
+                <div class="pt-4 border-t border-slate-100">
+                    <div class="flex items-center gap-2 mb-4">
+                        <svg class="w-4 h-4 text-red-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z">
+                            </path>
+                        </svg>
+                        <span class="text-xs font-bold text-red-500">Creation :</span>
+                    </div>
+                    <div class="space-y-3 pl-6">
+                        <div class="grid grid-cols-[100px_1fr] gap-4">
+                            <label class="text-[10px] font-bold text-slate-600">Done By:</label>
+                            <span class="text-[10px] text-slate-500">{{ req.done_by }}</span>
+                        </div>
+                        <div class="grid grid-cols-[100px_1fr] gap-4">
+                            <label class="text-[10px] font-bold text-slate-600">Done Date:</label>
+                            <span class="text-[10px] text-slate-500">{{ req.done_date }}</span>
+                        </div>
+                        <div class="grid grid-cols-[100px_1fr] gap-4">
+                            <label class="text-[10px] font-bold text-slate-600">ModifiedBy:</label>
+                            <span class="text-[10px] text-slate-500">{{ req.mod_by }}</span>
+                        </div>
+                        <div class="grid grid-cols-[100px_1fr] gap-4">
+                            <label class="text-[10px] font-bold text-slate-600">Modified Date:</label>
+                            <span class="text-[10px] text-slate-500">{{ req.mod_date }}</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Right Column -->
+            <div class="space-y-8">
+                <div class="flex items-center gap-2 mb-2">
+                    <span class="text-xs font-bold text-red-500">✔ Status :</span>
+                </div>
+
+                <div class="grid grid-cols-[120px_1fr] gap-4 items-center">
+                    <label class="text-[11px] font-bold text-slate-600">Status:</label>
+                    <span
+                        class="bg-[#10B981] text-white text-[10px] font-bold px-3 py-1 rounded inline-block shadow-sm w-fit">{{
+                        req.status }}</span>
+                </div>
+                <div class="grid grid-cols-[120px_1fr] gap-4 items-center">
+                    <label class="text-[11px] font-bold text-slate-600">StatusBy:</label>
+                    <span class="text-xs text-slate-500">{{ req.status_by }}</span>
+                </div>
+                <div class="grid grid-cols-[120px_1fr] gap-4 items-center">
+                    <label class="text-[11px] font-bold text-slate-600">Status Date:</label>
+                    <span class="text-xs text-slate-500">{{ req.status_date }}</span>
+                </div>
+
+                <div class="pt-6 border-t border-slate-100">
+                    <h4 class="text-sm font-bold text-slate-700 mb-4">Final Result:</h4>
+                    <div class="space-y-4">
+                        <div>
+                            <label
+                                class="block text-[11px] font-bold text-slate-500 uppercase tracking-wider mb-2">Result</label>
+                            <div class="relative">
+                                <select
+                                    class="appearance-none w-full md:w-64 rounded-lg border-slate-200 text-slate-700 text-sm px-4 py-2.5 bg-slate-100 hover:bg-slate-50 focus:ring-2 focus:ring-slate-200 focus:border-slate-400 focus:bg-white transition-all cursor-pointer font-medium"
+                                    disabled>
+                                    <option>No Growth</option>
+                                </select>
+                                <div
+                                    class="absolute inset-y-0 left-56 flex items-center px-3 pointer-events-none text-slate-400">
+                                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                            d="M19 9l-7 7-7-7"></path>
+                                    </svg>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Units Included Tab -->
+        <div x-show="tab === 'Units Included'" x-cloak x-transition:enter="transition ease-out duration-300"
+            x-transition:enter-start="opacity-0 translate-y-2" x-transition:enter-end="opacity-100 translate-y-0">
+            <div class="flex justify-end mb-4">
+                <button
+                    class="bg-[#2D89C8] hover:bg-[#2070a8] text-white text-xs font-bold py-1.5 px-4 rounded shadow-sm">Print
+                    Labels</button>
+            </div>
+            <div class="overflow-x-auto">
+                <table class="min-w-full divide-y divide-slate-100">
+                    <thead>
+                        <tr>
+                            <th class="px-4 py-3 text-left text-[11px] font-bold text-slate-500 uppercase">Donation Code
+                            </th>
+                            <th class="px-4 py-3 text-left text-[11px] font-bold text-slate-500 uppercase">Unit Number
+                            </th>
+                            <th class="px-4 py-3 text-left text-[11px] font-bold text-slate-500 uppercase">Component
+                                Type</th>
+                            <th class="px-4 py-3 text-left text-[11px] font-bold text-slate-500 uppercase">Collection
+                                Date</th>
+                            <th class="px-4 py-3 text-left text-[11px] font-bold text-slate-500 uppercase">Expire Date
+                            </th>
+                            <th class="px-4 py-2 text-right text-[11px] font-bold text-slate-500 uppercase"></th>
+                        </tr>
+                    </thead>
+                    <tbody class="divide-y divide-slate-50">
+                        {% for unit in req.units %}
+                        <tr class="hover:bg-slate-50">
+                            <td class="px-4 py-4 text-xs font-medium text-slate-700">{{ unit.code }}</td>
+                            <td class="px-4 py-4 text-xs text-slate-600">{{ unit.unit_no }}</td>
+                            <td class="px-4 py-4 text-xs text-slate-600">{{ unit.type }}</td>
+                            <td class="px-4 py-4 text-xs text-slate-600">{{ unit.col_date }}</td>
+                            <td class="px-4 py-4 text-xs text-slate-600">{{ unit.exp_date }}</td>
+                            <td class="px-4 py-2 text-right">
+                                <div class="flex flex-col items-end">
+                                    <span class="text-[10px] text-slate-500 font-mono">{{ unit.barcode }}</span>
+                                    <div class="bg-slate-800 h-6 w-24 mt-1"></div> <!-- Barcode placeholder -->
+                                    <span class="text-[10px] font-bold text-slate-800 font-mono">{{ unit.code }}</span>
+                                </div>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <!-- Receiving Tab -->
+        <div x-show="tab === 'Receiving'" x-cloak>
+            <div class="max-w-md space-y-4">
+                <div class="flex items-center gap-2 mb-2">
+                    <span class="text-xs font-bold text-green-500">✔ Received</span>
+                </div>
+                <div class="grid grid-cols-[100px_1fr] gap-4 items-center">
+                    <label class="text-[11px] font-bold text-slate-600">By :</label>
+                    <span class="text-xs text-slate-500">{{ req.rec_by }}</span>
+                </div>
+                <div class="grid grid-cols-[100px_1fr] gap-4 items-center">
+                    <label class="text-[11px] font-bold text-slate-600">On :</label>
+                    <span class="text-xs text-slate-500">{{ req.rec_date }}</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- Mandatory Info Tab -->
+        <div x-show="tab === 'Mandatory Info'" x-cloak>
+            <div class="grid grid-cols-1 gap-6 max-w-4xl">
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-x-12 gap-y-6">
+                    <div class="space-y-2">
+                        <label class="block text-[11px] font-bold text-slate-500 uppercase tracking-wider">Aerobic
+                            Number</label>
+                        <input type="text" value="{{ req.aero_num }}"
+                            class="w-full rounded-lg border-slate-200 text-slate-500 text-sm px-4 py-3 bg-slate-100 transition-all font-medium"
+                            disabled>
+                    </div>
+                    <div class="space-y-2">
+                        <label class="block text-[11px] font-bold text-slate-500 uppercase tracking-wider">Anaerobic
+                            Number</label>
+                        <input type="text" value="{{ req.anaero_num }}"
+                            class="w-full rounded-lg border-slate-200 text-slate-500 text-sm px-4 py-3 bg-slate-100 transition-all font-medium"
+                            disabled>
+                    </div>
+                    <div class="space-y-2">
+                        <label class="block text-[11px] font-bold text-slate-500 uppercase tracking-wider">Aerobic
+                            Bottle Lot Number</label>
+                        <input type="text" value="{{ req.aero_lot }}"
+                            class="w-full rounded-lg border-slate-200 text-slate-500 text-sm px-4 py-3 bg-slate-100 transition-all font-medium"
+                            disabled>
+                    </div>
+                    <div class="space-y-2">
+                        <label class="block text-[11px] font-bold text-slate-500 uppercase tracking-wider">Aerobic
+                            Bottle ExpiryDate</label>
+                        <input type="text" value="{{ req.aero_exp }}"
+                            class="w-full rounded-lg border-slate-200 text-slate-500 text-sm px-4 py-3 bg-slate-100 transition-all font-medium"
+                            disabled>
+                    </div>
+                    <div class="space-y-2">
+                        <label class="block text-[11px] font-bold text-slate-500 uppercase tracking-wider">Anaerobic
+                            Bottle Lot Number</label>
+                        <input type="text" value="{{ req.anaero_lot }}"
+                            class="w-full rounded-lg border-slate-200 text-slate-500 text-sm px-4 py-3 bg-slate-100 transition-all font-medium"
+                            disabled>
+                    </div>
+                    <div class="space-y-2">
+                        <label class="block text-[11px] font-bold text-slate-500 uppercase tracking-wider">Anaerobic
+                            Bottle ExpiryDate</label>
+                        <input type="text" value="{{ req.anaero_exp }}"
+                            class="w-full rounded-lg border-slate-200 text-slate-500 text-sm px-4 py-3 bg-slate-100 transition-all font-medium"
+                            disabled>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Preliminary Result / 48H Tab -->
+        <div x-show="tab === 'Preliminary Result'" x-cloak>
+            <div class="space-y-6 max-w-4xl">
+                <div class="space-y-4">
+                    <div>
+                        <label
+                            class="block text-[11px] font-bold text-slate-500 uppercase tracking-wider mb-2">Result</label>
+                        <div class="relative">
+                            <select
+                                class="appearance-none w-full md:w-48 rounded-lg border-slate-200 text-slate-700 text-xs px-4 py-2.5 bg-slate-50 hover:bg-white focus:ring-2 focus:ring-slate-200 focus:border-slate-400 focus:bg-white transition-all cursor-pointer font-medium">
+                                <option>NoGrowth</option>
+                            </select>
+                            <div
+                                class="absolute inset-y-0 left-40 flex items-center px-3 pointer-events-none text-slate-400">
+                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                        d="M19 9l-7 7-7-7"></path>
+                                </svg>
+                            </div>
+                        </div>
+                    </div>
+                    <div>
+                        <label class="block text-[11px] font-bold text-slate-500 uppercase tracking-wider mb-2">Result
+                            Note</label>
+                        <input type="text" placeholder="Result Note"
+                            class="w-full rounded-lg border-slate-200 text-slate-700 text-xs px-4 py-3 bg-slate-50 hover:bg-white focus:ring-2 focus:ring-slate-200 focus:border-slate-400 focus:bg-white transition-all placeholder:text-slate-400 font-medium"
+                            disabled>
+                    </div>
+                </div>
+
+                <div class="border-t border-slate-100 pt-6 space-y-6">
+                    <div class="flex gap-3">
+                        <div class="mt-0.5 text-green-500">
+                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="3"
+                                    d="M5 13l4 4L19 7"></path>
+                            </svg>
+                        </div>
+                        <div>
+                            <p class="text-xs font-bold text-slate-700">Preliminary Result/48H Submitted</p>
+                            <div class="text-[10px] text-slate-500 mt-1">
+                                <span class="block">By : safa.ali</span>
+                                <span class="block">On : 31/01/2026 05:52 AM</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="flex gap-3">
+                        <div class="mt-0.5 text-green-500">
+                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="3"
+                                    d="M5 13l4 4L19 7"></path>
+                            </svg>
+                        </div>
+                        <div>
+                            <p class="text-xs font-bold text-slate-700">Result Reviewed</p>
+                            <div class="text-[10px] text-slate-500 mt-1">
+                                <span class="block">By : safa.ali</span>
+                                <span class="block">On : 31/01/2026 05:52 AM</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Final Result / 5D Tab -->
+        <div x-show="tab === 'Final Result'" x-cloak>
+            <div class="space-y-6 max-w-4xl">
+                <div class="space-y-4">
+                    <div>
+                        <label
+                            class="block text-[11px] font-bold text-slate-500 uppercase tracking-wider mb-2">Result</label>
+                        <div class="relative">
+                            <select
+                                class="appearance-none w-full md:w-48 rounded-lg border-slate-200 text-slate-700 text-xs px-4 py-2.5 bg-slate-50 hover:bg-white focus:ring-2 focus:ring-slate-200 focus:border-slate-400 focus:bg-white transition-all cursor-pointer font-medium">
+                                <option></option>
+                            </select>
+                            <div
+                                class="absolute inset-y-0 left-40 flex items-center px-3 pointer-events-none text-slate-400">
+                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                        d="M19 9l-7 7-7-7"></path>
+                                </svg>
+                            </div>
+                        </div>
+                    </div>
+                    <div>
+                        <label class="block text-[11px] font-bold text-slate-500 uppercase tracking-wider mb-2">Result
+                            Note</label>
+                        <input type="text" placeholder="Result Note"
+                            class="w-full rounded-lg border-slate-200 text-slate-700 text-xs px-4 py-3 bg-slate-50 hover:bg-white focus:ring-2 focus:ring-slate-200 focus:border-slate-400 focus:bg-white transition-all placeholder:text-slate-400 font-medium">
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Corrective Action Tab -->
+        <div x-show="tab === 'Corrective Action'" x-cloak>
+            <div class="overflow-x-auto border rounded-lg border-slate-100">
+                <table class="min-w-full divide-y divide-slate-100">
+                    <thead class="bg-gray-50">
+                        <tr>
+                            <th class="px-4 py-3 text-left text-[11px] font-bold text-slate-500 uppercase">Problem</th>
+                            <th class="px-4 py-3 text-left text-[11px] font-bold text-slate-500 uppercase">
+                                CorrectiveAction</th>
+                            <th class="px-4 py-3 text-left text-[11px] font-bold text-slate-500 uppercase">Created By
+                            </th>
+                            <th class="px-4 py-3 text-left text-[11px] font-bold text-slate-500 uppercase">Created Date
+                            </th>
+                        </tr>
+                    </thead>
+                    <tbody class="divide-y divide-slate-50 bg-white">
+                        <tr>
+                            <td colspan="4" class="px-4 py-8 text-center text-xs text-slate-400">
+                                No records found
+                            </td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+    </div>
+</div>
+{% endblock %}

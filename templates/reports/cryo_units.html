@@ -1,0 +1,315 @@
+{% extends 'base.html' %}
+
+{% block title %}Donation Components Details | CoraBlood AI{% endblock %}
+{% block header %}
+<span x-text="lang === 'en' ? 'Donation Components Details' : 'تفاصيل مكونات التبرع'"></span>
+{% endblock %}
+
+{% block content %}
+<div class="space-y-8">
+
+    <!-- Filters Section -->
+    <div
+        class="bg-white rounded-xl shadow-[0_2px_15px_-3px_rgba(0,0,0,0.07),0_10px_20px_-2px_rgba(0,0,0,0.04)] border border-slate-100 p-8">
+        <form method="GET" class="grid grid-cols-1 md:grid-cols-3 gap-x-12 gap-y-10">
+            <!-- Row 1 -->
+            <div class="space-y-2">
+                <label class="block text-[11px] font-bold text-slate-500 uppercase tracking-wider">Component
+                    Type</label>
+                <div class="relative">
+                    <select
+                        class="appearance-none w-full rounded-lg border-slate-200 text-slate-700 text-sm px-4 py-3 bg-slate-50 hover:bg-white focus:ring-2 focus:ring-slate-200 focus:border-slate-400 focus:bg-white transition-all cursor-pointer font-medium">
+                        <option>CRYOPRECIPITATE</option>
+                        <option>PRBC</option>
+                        <option>Plat PC</option>
+                        <option>FFP</option>
+                        <option>APHERESIS</option>
+                        <option>Thawed FFP</option>
+                    </select>
+                    <div class="absolute inset-y-0 right-0 flex items-center px-3 pointer-events-none text-slate-400">
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7">
+                            </path>
+                        </svg>
+                    </div>
+                </div>
+            </div>
+
+            <div class="space-y-2">
+                <label class="block text-[11px] font-bold text-slate-500 uppercase tracking-wider">Blood Group</label>
+                <div class="relative">
+                    <select
+                        class="appearance-none w-full rounded-lg border-slate-200 text-slate-700 text-sm px-4 py-3 bg-slate-50 hover:bg-white focus:ring-2 focus:ring-slate-200 focus:border-slate-400 focus:bg-white transition-all cursor-pointer font-medium">
+                        <option>All BloodGroups</option>
+                        <option>A+</option>
+                        <option>O-</option>
+                        <option>O+</option>
+                        <option>A-</option>
+                        <option>B+</option>
+                        <option>B-</option>
+                        <option>AB+</option>
+                        <option>AB-</option>
+                    </select>
+                    <div class="absolute inset-y-0 right-0 flex items-center px-3 pointer-events-none text-slate-400">
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7">
+                            </path>
+                        </svg>
+                    </div>
+                </div>
+            </div>
+
+            <div class="space-y-2">
+                <label class="block text-[11px] font-bold text-slate-500 uppercase tracking-wider">Pheno Type</label>
+                <div class="relative">
+                    <select
+                        class="appearance-none w-full rounded-lg border-slate-200 text-slate-700 text-sm px-4 py-3 bg-slate-50 hover:bg-white focus:ring-2 focus:ring-slate-200 focus:border-slate-400 focus:bg-white transition-all cursor-pointer font-medium">
+                        <option>All Pheno Types</option>
+                        <option>CcEe</option>
+                        <option>ccEe</option>
+                        <option>Ccee</option>
+                        <option>CcEE</option>
+                        <option>ccee</option>
+                        <option>CCee</option>
+                        <option>ccEE</option>
+                        <option>CCEe</option>
+                        <option>?</option>
+                    </select>
+                    <div class="absolute inset-y-0 right-0 flex items-center px-3 pointer-events-none text-slate-400">
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7">
+                            </path>
+                        </svg>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Row 2 -->
+            <div class="space-y-2">
+                <label class="block text-[11px] font-bold text-slate-500 uppercase tracking-wider">Status</label>
+                <div class="relative">
+                    <select
+                        class="appearance-none w-full rounded-lg border-slate-200 text-slate-700 text-sm px-4 py-3 bg-slate-50 hover:bg-white focus:ring-2 focus:ring-slate-200 focus:border-slate-400 focus:bg-white transition-all cursor-pointer font-medium">
+                        <option>All Status</option>
+                        <option>unScreened</option>
+                        <option>Screened</option>
+                        <option>Inventory</option>
+                        <option>Discarded</option>
+                        <option>Expired</option>
+                        <option>Deleted</option>
+                        <option>Issued</option>
+                        <option>ReservedToPatient</option>
+                        <option>Ready To Deliver</option>
+                    </select>
+                    <div class="absolute inset-y-0 right-0 flex items-center px-3 pointer-events-none text-slate-400">
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7">
+                            </path>
+                        </svg>
+                    </div>
+                </div>
+            </div>
+
+            <div class="space-y-2">
+                <label class="block text-[11px] font-bold text-slate-500 uppercase tracking-wider">Site</label>
+                <div class="relative">
+                    <select
+                        class="appearance-none w-full rounded-lg border-slate-200 text-slate-700 text-sm px-4 py-3 bg-slate-50 hover:bg-white focus:ring-2 focus:ring-slate-200 focus:border-slate-400 focus:bg-white transition-all cursor-pointer font-medium">
+                        <option value="SMC1">الفرع الأول</option>
+                    </select>
+                    <div class="absolute inset-y-0 right-0 flex items-center px-3 pointer-events-none text-slate-400">
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7">
+                            </path>
+                        </svg>
+                    </div>
+                </div>
+            </div>
+
+            <div class="space-y-2">
+                <label class="block text-[11px] font-bold text-slate-500 uppercase tracking-wider">Donation</label>
+                <div class="flex items-center gap-4">
+                    <button type="submit"
+                        class="bg-[#F97316] hover:bg-[#EA580C] text-white text-sm font-bold py-3 px-6 rounded-lg shadow-sm shadow-orange-200 transition-all active:scale-[0.98] w-48">
+                        Select Donation
+                    </button>
+                    <a href="{% url 'cryo_units' %}"
+                        class="text-sky-500 text-sm hover:text-sky-600 px-2 flex items-center gap-1.5 transition-colors font-semibold cursor-pointer">
+                        <span class="text-lg">×</span> reset
+                    </a>
+                </div>
+            </div>
+
+            <!-- Row 3 -->
+            <div class="space-y-2 md:col-span-1">
+                <label class="block text-[11px] font-bold text-slate-500 uppercase tracking-wider">Donation code</label>
+                <input type="text" placeholder="Donation Code"
+                    class="w-full rounded-lg border-slate-200 text-slate-700 text-sm px-4 py-3 bg-slate-50/50 hover:bg-white focus:ring-2 focus:ring-slate-200 focus:border-slate-400 focus:bg-white transition-all placeholder:text-slate-400 font-medium">
+            </div>
+        </form>
+    </div>
+
+    <!-- Table Section -->
+    <div
+        class="bg-white rounded-xl shadow-[0_2px_15px_-3px_rgba(0,0,0,0.07),0_10px_20px_-2px_rgba(0,0,0,0.04)] border border-slate-100 overflow-hidden">
+        <div class="overflow-x-auto">
+            <table class="min-w-full divide-y divide-slate-100 whitespace-nowrap">
+                <thead class="bg-white">
+                    <tr>
+                        <th class="px-5 py-4 text-left text-[11px] font-bold text-slate-400 uppercase tracking-wider">#
+                        </th>
+                        <th class="px-5 py-4 text-left text-[11px] font-bold text-slate-400 uppercase tracking-wider">
+                            Donation</th>
+                        <th class="px-5 py-4 text-left text-[11px] font-bold text-slate-400 uppercase tracking-wider">
+                            Source</th>
+                        <th class="px-5 py-4 text-left text-[11px] font-bold text-slate-400 uppercase tracking-wider">
+                            ComponentType</th>
+                        <th class="px-5 py-4 text-left text-[11px] font-bold text-slate-400 uppercase tracking-wider">
+                            BloodGroup</th>
+                        <th class="px-5 py-4 text-center text-[11px] font-bold text-slate-400 uppercase tracking-wider">
+                            Qty</th>
+                        <th class="px-5 py-4 text-center text-[11px] font-bold text-slate-400 uppercase tracking-wider">
+                            Volume</th>
+                        <th class="px-5 py-4 text-center text-[11px] font-bold text-slate-400 uppercase tracking-wider">
+                            Volume Issued</th>
+                        <th class="px-5 py-4 text-center text-[11px] font-bold text-slate-400 uppercase tracking-wider">
+                            RR</th>
+                        <th class="px-5 py-4 text-left text-[11px] font-bold text-slate-400 uppercase tracking-wider">
+                            ExpireDate</th>
+                        <th class="px-5 py-4 text-left text-[11px] font-bold text-slate-400 uppercase tracking-wider">
+                            Temprature</th>
+                        <th class="px-5 py-4 text-left text-[11px] font-bold text-slate-400 uppercase tracking-wider">
+                            Storage Location</th>
+                        <th class="px-5 py-4 text-left text-[11px] font-bold text-slate-400 uppercase tracking-wider">
+                            Status</th>
+                        <th class="px-5 py-4 text-left text-[11px] font-bold text-slate-400 uppercase tracking-wider">
+                            Verification</th>
+                        <th class="px-5 py-4 text-left text-[11px] font-bold text-slate-400 uppercase tracking-wider">
+                            Date</th>
+                        <th class="px-5 py-4 text-right text-[11px] font-bold text-slate-400 uppercase tracking-wider">
+                            Actions</th>
+                    </tr>
+                </thead>
+                <tbody class="divide-y divide-slate-50">
+                    {% for item in components %}
+                    <tr class="hover:bg-slate-50 transition-colors group">
+                        <td class="px-5 py-4 text-xs font-mono text-slate-400 font-medium">{{ item.id }}</td>
+                        <td
+                            class="px-5 py-4 text-xs font-mono font-medium text-blue-500 hover:text-blue-600 hover:underline cursor-pointer">
+                            {{ item.code }}</td>
+                        <td class="px-5 py-4 text-xs text-slate-600 font-medium">{{ item.source|default:"SMC" }}</td>
+                        <td class="px-5 py-4 text-xs font-semibold text-slate-700">{{ item.type }}</td>
+                        <td class="px-5 py-4 text-xs font-bold text-slate-700">{{ item.bg }}</td>
+                        <td class="px-5 py-4 text-center text-xs text-slate-600 font-medium">{{ item.qty }}</td>
+                        <td class="px-5 py-4 text-center">
+                            <span
+                                class="bg-[#10B981] text-white text-[11px] font-bold px-2 py-0.5 rounded shadow-sm shadow-emerald-200">{{
+                                item.vol }}</span>
+                        </td>
+                        <td class="px-5 py-4 text-center">
+                            {% if item.vol_issued %}
+                            <span
+                                class="bg-[#10B981] text-white text-[11px] font-bold px-2 py-0.5 rounded shadow-sm shadow-emerald-200">{{
+                                item.vol }}</span>
+                            {% else %}
+                            <span class="text-xs text-slate-300">-</span>
+                            {% endif %}
+                        </td>
+                        <td class="px-5 py-4 text-xs text-slate-600 font-mono text-center">{{ item.rr }}</td>
+                        <td class="px-5 py-4 text-xs text-slate-600 font-medium">{{ item.exp|default:"-" }}</td>
+                        <td class="px-5 py-4 text-xs text-slate-600 whitespace-pre">{{ item.temp }}</td>
+                        <td class="px-5 py-4 text-xs text-slate-600">{{ item.loc|default:"Any" }}</td>
+
+                        <!-- Status -->
+                        <td class="px-5 py-4 text-left align-top">
+                            {% if item.status == 'Inventory' %}
+                            <div
+                                class="bg-[#10B981] text-white text-[10px] font-bold px-2 py-1 rounded inline-block shadow-sm shadow-emerald-200 mb-2">
+                                Inventory</div>
+                            {% elif item.status == 'Issued' %}
+                            <div
+                                class="bg-[#F59E0B] text-white text-[10px] font-bold px-2 py-1 rounded inline-block shadow-sm shadow-amber-200 mb-2">
+                                Issued</div>
+                            {% endif %}
+
+                            <div class="text-[10px] text-slate-500 flex flex-col gap-0.5 leading-snug">
+                                <span class="text-slate-400">On : <span class="text-slate-600 font-medium">{{
+                                        item.status_date }}</span></span>
+                                {% if item.status_by %}
+                                <span class="text-slate-400">By : <span class="text-slate-600 font-medium">{{
+                                        item.status_by }}</span></span>
+                                {% endif %}
+                                {% if item.note %}
+                                <span class="text-slate-400">Note : <span
+                                        class="text-slate-600 font-medium text-[9px]">{{ item.note }}</span></span>
+                                {% endif %}
+                            </div>
+                        </td>
+
+                        <!-- Verification -->
+                        <td class="px-5 py-4 text-left align-top">
+                            <div class="relative">
+                                <div class="flex items-center text-xs text-slate-700 font-bold mb-1">
+                                    <svg class="w-4 h-4 text-[#10B981] mr-1" fill="none" viewBox="0 0 24 24"
+                                        stroke="currentColor">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="3"
+                                            d="M5 13l4 4L19 7" />
+                                    </svg>
+                                    Component Verified
+                                </div>
+                                <div class="text-[9px] text-slate-500 pl-5">
+                                    <div>By : {{ item.ver_by }}</div>
+                                    <div>On : {{ item.ver_date }}</div>
+                                </div>
+                            </div>
+                        </td>
+
+                        <!-- Date -->
+                        <td class="px-5 py-4 text-[10px] text-slate-500 leading-snug align-top">
+                            <div class="mb-1">
+                                <span class="text-slate-400">DoneBy:</span> <span
+                                    class="font-medium text-slate-700 block">{{ item.done_by }}</span>
+                            </div>
+                            <div class="mb-2">
+                                <span class="text-slate-400">DoneDate:</span>
+                                <span class="text-slate-600 block">{{ item.done_date }}</span>
+                            </div>
+                            <div>
+                                <span class="text-slate-400">ModifiedBy:</span> <span class="text-slate-600">{{
+                                    item.modified_by }}</span>
+                            </div>
+                            <div>
+                                <span class="text-slate-400">ModifiedDate:</span> <span class="text-slate-600">{{
+                                    item.modified_date }}</span>
+                            </div>
+                        </td>
+
+                        <!-- Actions -->
+                        <td class="px-5 py-4 text-right align-top">
+                            <div class="flex gap-2 justify-end">
+                                <button
+                                    class="bg-[#2D89C8] hover:bg-[#2070a8] text-white text-[11px] font-bold py-1.5 px-3 rounded shadow-sm transition-colors whitespace-nowrap">
+                                    CRYO Preparation
+                                </button>
+                                <button
+                                    class="bg-[#EF4444] hover:bg-[#DC2626] text-white text-[11px] font-bold py-1.5 px-3 rounded shadow-sm shadow-red-200 transition-colors whitespace-nowrap">
+                                    {{ item.action_btn }}
+                                </button>
+                            </div>
+                        </td>
+                    </tr>
+                    {% empty %}
+                    <tr>
+                        <td colspan="16" class="px-6 py-20 text-center">
+                            <div class="flex flex-col items-center justify-center">
+                                <h3 class="text-slate-900 font-medium mb-1">No cryo units found</h3>
+                            </div>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+{% endblock %}

@@ -1,0 +1,85 @@
+{% extends 'base.html' %}
+{% block title %}Blood Orders | CoraBlood{% endblock %}
+
+{% block content %}
+<div class="space-y-6">
+    <div class="flex justify-between items-center bg-white p-6 rounded-2xl shadow-sm border border-slate-100">
+        <div>
+            <h1 class="text-2xl font-bold text-slate-800">Blood Requests</h1>
+            <p class="text-slate-500">Manage hospital requests & crossmatches</p>
+        </div>
+        <a href="{% url 'create_order' %}"
+            class="px-6 py-2 bg-brand-600 hover:bg-brand-700 text-white font-bold rounded-xl shadow-lg shadow-brand-500/30 transition-all flex items-center gap-2">
+            <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
+            </svg>
+            New Request
+        </a>
+    </div>
+
+    <div class="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden">
+        <table class="w-full text-left">
+            <thead class="bg-slate-50 text-slate-500 text-xs uppercase font-bold">
+                <tr>
+                    <th class="px-6 py-4">ID</th>
+                    <th class="px-6 py-4">Patient</th>
+                    <th class="px-6 py-4">Component</th>
+                    <th class="px-6 py-4">Urgency</th>
+                    <th class="px-6 py-4">Status</th>
+                    <th class="px-6 py-4">Action</th>
+                </tr>
+            </thead>
+            <tbody class="divide-y divide-slate-100">
+                {% for order in orders %}
+                <tr class="hover:bg-slate-50 transition-colors">
+                    <td class="px-6 py-4 font-mono text-slate-400">#{{ order.id }}</td>
+                    <td class="px-6 py-4">
+                        <div class="font-bold text-slate-900">{{ order.patient_full_name }}</div>
+                        <div class="text-xs text-slate-500">MRN: {{ order.patient_mrn }} | <strong>{{
+                                order.patient_blood_group }}</strong></div>
+                    </td>
+                    <td class="px-6 py-4">
+                        <span class="px-2 py-1 bg-slate-100 text-slate-600 rounded text-xs font-bold">{{
+                            order.component_type }}</span>
+                        <span class="text-xs text-slate-400 ml-1">x{{ order.units_requested }}</span>
+                    </td>
+                    <td class="px-6 py-4">
+                        {% if order.urgency == 'EMERGENCY' %}
+                        <span
+                            class="inline-flex items-center px-2 py-1 rounded text-xs font-bold bg-red-100 text-red-700 animate-pulse">
+                            EMERGENCY
+                        </span>
+                        {% elif order.urgency == 'URGENT' %}
+                        <span
+                            class="inline-flex items-center px-2 py-1 rounded text-xs font-bold bg-amber-100 text-amber-700">
+                            Urgent
+                        </span>
+                        {% else %}
+                        <span class="text-slate-500 text-sm">Routine</span>
+                        {% endif %}
+                    </td>
+                    <td class="px-6 py-4">
+                        <span class="px-3 py-1 rounded-full text-xs font-bold 
+                            {% if order.status == 'PENDING' %}bg-slate-100 text-slate-600{% endif %}
+                            {% if order.status == 'CROSSMATCHING' %}bg-blue-100 text-blue-600{% endif %}
+                            {% if order.status == 'ISSUED' %}bg-purple-100 text-purple-600{% endif %}
+                            {% if order.status == 'COMPLETED' %}bg-emerald-100 text-emerald-600{% endif %}
+                        ">
+                            {{ order.get_status_display }}
+                        </span>
+                    </td>
+                    <td class="px-6 py-4">
+                        <a href="{% url 'order_detail' order.id %}"
+                            class="text-brand-600 hover:text-brand-800 font-bold text-sm">View & Process &rarr;</a>
+                    </td>
+                </tr>
+                {% empty %}
+                <tr>
+                    <td colspan="6" class="px-6 py-12 text-center text-slate-500">No active orders found.</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+{% endblock %}

@@ -1,0 +1,127 @@
+{% extends 'base.html' %}
+
+{% block title %}Discrepancy Alarms | CoraBlood AI{% endblock %}
+
+{% block header %}
+<div class="flex items-center gap-2">
+    <span x-text="lang === 'en' ? 'Discrepancy Alarms' : 'تنبيهات التعارض'"></span>
+    <span class="bg-red-100 text-red-600 text-[10px] font-bold px-2 py-0.5 rounded-full">ALERTS</span>
+</div>
+{% endblock %}
+
+{% block header_actions %}
+<button class="text-slate-500 hover:text-slate-700 transition-colors">
+    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+            d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15">
+        </path>
+    </svg>
+</button>
+{% endblock %}
+
+{% block content %}
+<div class="space-y-6">
+
+    <!-- Main Card -->
+    <div class="bg-white rounded-xl shadow-sm border border-slate-100 overflow-hidden">
+        <!-- Header -->
+        <div class="px-6 py-4 bg-slate-50 border-b border-slate-100 flex items-center justify-between">
+            <h3 class="text-sm font-bold text-slate-700">Discrepancy Alarms</h3>
+            <button class="text-slate-400 hover:text-slate-600">
+                <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 12H4"></path>
+                </svg>
+            </button>
+        </div>
+
+        <!-- Filters -->
+        <div class="p-4 border-b border-slate-100 bg-white grid grid-cols-1 md:grid-cols-4 gap-4 items-center">
+            <div class="flex items-center gap-2">
+                <label class="text-[11px] font-bold text-slate-600 whitespace-nowrap">Sample Number</label>
+                <input type="text" placeholder="Sample Number"
+                    class="w-full px-3 py-1.5 border border-slate-300 rounded text-xs focus:outline-none focus:border-brand-500">
+            </div>
+            <div class="flex items-center gap-2">
+                <label class="text-[11px] font-bold text-slate-600 whitespace-nowrap">MRN</label>
+                <input type="text" placeholder="MRN"
+                    class="w-full px-3 py-1.5 border border-slate-300 rounded text-xs focus:outline-none focus:border-brand-500">
+            </div>
+            <div class="flex items-center gap-2">
+                <label class="text-[11px] font-bold text-slate-600 whitespace-nowrap">Site</label>
+                <select
+                    class="w-full px-3 py-1.5 border border-slate-300 rounded text-xs focus:outline-none focus:border-brand-500 bg-white">
+                    <option value="SMC2">الفرع الثاني</option>
+                    <option value="SMC1">الفرع الأول</option>
+                </select>
+            </div>
+            <div class="flex items-center gap-2">
+                <label class="text-[11px] font-bold text-slate-600 whitespace-nowrap">Date</label>
+                <input type="date"
+                    class="w-full px-3 py-1.5 border border-slate-300 rounded text-xs focus:outline-none focus:border-brand-500 text-slate-500">
+            </div>
+        </div>
+
+        <!-- Table -->
+        <div class="overflow-x-auto">
+            <table class="min-w-full divide-y divide-slate-100">
+                <thead class="bg-white">
+                    <tr>
+                        <th class="px-4 py-3 text-left text-[10px] font-bold text-slate-900 uppercase">Site</th>
+                        <th class="px-4 py-3 text-left text-[10px] font-bold text-slate-900 uppercase">Sample Number
+                        </th>
+                        <th class="px-4 py-3 text-left text-[10px] font-bold text-slate-900 uppercase">Patient</th>
+                        <th class="px-4 py-3 text-left text-[10px] font-bold text-slate-900 uppercase">Test</th>
+                        <th class="px-4 py-3 text-left text-[10px] font-bold text-red-600 uppercase">New Result
+                            (blocked)</th>
+                        <th class="px-4 py-3 text-left text-[10px] font-bold text-green-600 uppercase">Last Result
+                            (Previous)</th>
+                        <th class="px-4 py-3 text-left text-[10px] font-bold text-slate-900 uppercase">Creation</th>
+                        <th class="px-4 py-3 text-right text-[10px] font-bold text-slate-900 uppercase"></th>
+                    </tr>
+                </thead>
+                <tbody class="divide-y divide-slate-50 bg-white">
+                    {% for item in alarms %}
+                    <tr class="hover:bg-slate-50 transition-colors">
+                        <td class="px-4 py-4 text-[11px] font-bold text-slate-800">{{ item.site }}</td>
+                        <td class="px-4 py-4 text-[11px] text-slate-600">{{ item.sample_number }}</td>
+                        <td class="px-4 py-4 text-[11px] text-slate-600 font-medium">{{ item.patient }}</td>
+                        <td class="px-4 py-4">
+                            <span
+                                class="bg-[#2D89C8] text-white text-[10px] px-2 py-1 rounded shadow-sm font-medium whitespace-nowrap">{{
+                                item.test }}</span>
+                        </td>
+                        <td class="px-4 py-4 text-[11px] font-bold text-red-500">{{ item.new_result }}</td>
+                        <td class="px-4 py-4 text-[11px] font-bold text-green-500">{{ item.last_result }}</td>
+                        <td class="px-4 py-4 text-[10px] text-slate-500">
+                            <div><span class="font-bold text-slate-700">By :</span> {{ item.created_by }}</div>
+                            <div class="mt-0.5"><span class="font-bold text-slate-700">On :</span> {{ item.created_at }}
+                            </div>
+                        </td>
+                        <td class="px-4 py-4 text-right">
+                            <button
+                                class="bg-[#2D89C8] hover:bg-[#2070a8] text-white text-[10px] font-medium py-1.5 px-3 rounded shadow-sm transition-colors cursor-pointer">
+                                Patient result history
+                            </button>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+
+        <!-- Pagination Footer (Visual Only for now) -->
+        <div class="bg-slate-50 px-4 py-3 border-t border-slate-100 flex items-center justify-between">
+            <span class="text-[10px] text-slate-500">Showing 1 to 7 of 7 entries</span>
+            <div class="flex gap-1">
+                <button
+                    class="w-6 h-6 flex items-center justify-center rounded bg-white border border-slate-200 text-slate-400 text-xs hover:border-slate-300 disabled:opacity-50">&lt;</button>
+                <button
+                    class="w-6 h-6 flex items-center justify-center rounded bg-brand-500 text-white text-xs font-bold shadow-sm">1</button>
+                <button
+                    class="w-6 h-6 flex items-center justify-center rounded bg-white border border-slate-200 text-slate-400 text-xs hover:border-slate-300 disabled:opacity-50">&gt;</button>
+            </div>
+        </div>
+    </div>
+
+</div>
+{% endblock %}

@@ -1,0 +1,52 @@
+[
+  {
+    "id": "TC001",
+    "title": "postportalregisternewdonor",
+    "description": "Test registering a new donor with valid email, password, and name to receive 201 status and donor id."
+  },
+  {
+    "id": "TC002",
+    "title": "postportalloginvaliddonorcredentials",
+    "description": "Test donor login with valid credentials to receive 200 status and JWT token."
+  },
+  {
+    "id": "TC003",
+    "title": "postportalregisterduplicateemail",
+    "description": "Test registering a donor with an already registered email to receive 400 status with 'email already exists' error."
+  },
+  {
+    "id": "TC004",
+    "title": "postportallogininvalidcredentials",
+    "description": "Test donor login with invalid credentials to receive 401 Unauthorized status."
+  },
+  {
+    "id": "TC005",
+    "title": "postportaldashboardbookappointment",
+    "description": "Test booking a new appointment with valid token and appointment details to receive 201 status with appointment confirmation and id."
+  },
+  {
+    "id": "TC006",
+    "title": "postportaldashboardconflictingappointmenttime",
+    "description": "Test booking an appointment with a time slot that conflicts with existing booking to receive 409 Conflict with 'time slot unavailable' error."
+  },
+  {
+    "id": "TC007",
+    "title": "postportalquestionnairesubmitwithsignature",
+    "description": "Test submitting medical questionnaire with valid token, questions, and signature to receive 201 status with stored questionnaire id and timestamp."
+  },
+  {
+    "id": "TC008",
+    "title": "postportalquestionnairemissingsignature",
+    "description": "Test submitting medical questionnaire with valid token but missing signature field to receive 400 Bad Request with 'missing signature' error."
+  },
+  {
+    "id": "TC009",
+    "title": "postportalmedicationsubmitvalid",
+    "description": "Test submitting categorized medication records with valid token and correct payload to receive 201 status with saved medication record id."
+  },
+  {
+    "id": "TC010",
+    "title": "getapidonationsfetchworkflowadmin",
+    "description": "Test fetching full donation workflow details with valid admin token to receive 200 status with complete workflow data."
+  }
+]

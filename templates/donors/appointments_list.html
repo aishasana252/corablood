@@ -1,0 +1,132 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}Donor Appointments - CoraBlood{% endblock %}
+
+{% block content %}
+<div class="p-6">
+    <div class="mb-8 flex flex-col md:flex-row md:items-center justify-between gap-4">
+        <div>
+            <h1 class="text-3xl font-display font-bold text-slate-800">Donor Appointments</h1>
+            <p class="text-slate-500 mt-1">Manage and respond to donor scheduling requests.</p>
+        </div>
+        
+        <div class="flex items-center gap-3">
+            <div class="bg-white p-1 rounded-xl shadow-sm border border-slate-200 flex">
+                <a href="?status=" class="px-4 py-2 text-sm font-semibold rounded-lg transition-all {% if not status_filter %}bg-slate-900 text-white shadow-md{% else %}text-slate-500 hover:text-slate-800{% endif %}">
+                    All
+                </a>
+                <a href="?status=PENDING" class="px-4 py-2 text-sm font-semibold rounded-lg transition-all {% if status_filter == 'PENDING' %}bg-amber-500 text-white shadow-md{% else %}text-slate-500 hover:text-slate-800{% endif %}">
+                    Pending
+                </a>
+                <a href="?status=CONFIRMED" class="px-4 py-2 text-sm font-semibold rounded-lg transition-all {% if status_filter == 'CONFIRMED' %}bg-emerald-500 text-white shadow-md{% else %}text-slate-500 hover:text-slate-800{% endif %}">
+                    Confirmed
+                </a>
+            </div>
+        </div>
+    </div>
+
+    {% if messages %}
+    <div class="mb-6 space-y-2">
+        {% for message in messages %}
+        <div class="p-4 rounded-xl flex items-center gap-3 {% if message.tags == 'success' %}bg-emerald-50 text-emerald-700 border border-emerald-100{% elif message.tags == 'warning' %}bg-amber-50 text-amber-700 border border-amber-100{% else %}bg-blue-50 text-blue-700 border border-blue-100{% endif %}">
+            {% if message.tags == 'success' %}
+            <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+            {% else %}
+            <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+            {% endif %}
+            <span class="text-sm font-bold">{{ message }}</span>
+        </div>
+        {% endfor %}
+    </div>
+    {% endif %}
+
+    <div class="bg-white rounded-3xl shadow-xl shadow-slate-200/50 border border-slate-100 overflow-hidden">
+        <div class="overflow-x-auto">
+            <table class="w-full text-left border-collapse">
+                <thead>
+                    <tr class="bg-slate-50/50">
+                        <th class="px-6 py-4 text-xs font-bold text-slate-400 uppercase tracking-widest border-b border-slate-100">Donor</th>
+                        <th class="px-6 py-4 text-xs font-bold text-slate-400 uppercase tracking-widest border-b border-slate-100">Date & Time</th>
+                        <th class="px-6 py-4 text-xs font-bold text-slate-400 uppercase tracking-widest border-b border-slate-100">Branch & Type</th>
+                        <th class="px-6 py-4 text-xs font-bold text-slate-400 uppercase tracking-widest border-b border-slate-100 text-center">Status</th>
+                        <th class="px-6 py-4 text-xs font-bold text-slate-400 uppercase tracking-widest border-b border-slate-100 text-right">Actions</th>
+                    </tr>
+                </thead>
+                <tbody class="divide-y divide-slate-50">
+                    {% for appt in appointments %}
+                    <tr class="hover:bg-slate-50/50 transition-colors group">
+                        <td class="px-6 py-4 whitespace-nowrap">
+                            <div class="flex items-center gap-3">
+                                <div class="w-10 h-10 rounded-full bg-slate-100 flex items-center justify-center text-slate-500 font-bold text-sm border border-slate-200">
+                                    {{ appt.donor.full_name|slice:":1"|upper }}
+                                </div>
+                                <div>
+                                    <div class="text-sm font-bold text-slate-800">{{ appt.donor.full_name }}</div>
+                                    <div class="text-xs text-slate-400 font-mono">{{ appt.donor.national_id }}</div>
+                                </div>
+                            </div>
+                        </td>
+                        <td class="px-6 py-4 whitespace-nowrap">
+                            <div class="flex flex-col">
+                                <span class="text-sm font-bold text-slate-700">{{ appt.appointment_date|date:"d M Y" }}</span>
+                                <span class="text-xs text-slate-400">{{ appt.appointment_time|time:"H:i" }}</span>
+                            </div>
+                        </td>
+                        <td class="px-6 py-4 whitespace-nowrap">
+                            <div class="flex flex-col">
+                                <span class="text-sm font-semibold text-slate-700">{{ appt.hospital_branch }}</span>
+                                <span class="text-[10px] font-bold text-slate-400 uppercase tracking-wider">{{ appt.get_donation_type_display }}</span>
+                            </div>
+                        </td>
+                        <td class="px-6 py-4 whitespace-nowrap text-center">
+                            <span class="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-bold tracking-wider 
+                                {% if appt.status == 'PENDING' %}bg-amber-100 text-amber-800 border border-amber-200
+                                {% elif appt.status == 'CONFIRMED' %}bg-emerald-100 text-emerald-800 border border-emerald-200
+                                {% elif appt.status == 'CANCELLED' %}bg-rose-100 text-rose-800 border border-rose-200
+                                {% else %}bg-slate-100 text-slate-800 border border-slate-200{% endif %} border">
+                                {{ appt.get_status_display }}
+                            </span>
+                        </td>
+                        <td class="px-6 py-4 whitespace-nowrap text-right">
+                            {% if appt.status == 'PENDING' %}
+                            <div class="flex justify-end gap-2">
+                                <form method="POST" action="{% url 'appointment_action' appt.id %}">
+                                    {% csrf_token %}
+                                    <input type="hidden" name="action" value="accept">
+                                    <button type="submit" class="p-2 bg-emerald-50 text-emerald-600 rounded-lg hover:bg-emerald-500 hover:text-white transition-all shadow-sm">
+                                        <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" /></svg>
+                                    </button>
+                                </form>
+                                <form method="POST" action="{% url 'appointment_action' appt.id %}">
+                                    {% csrf_token %}
+                                    <input type="hidden" name="action" value="cancel">
+                                    <button type="submit" class="p-2 bg-rose-50 text-rose-600 rounded-lg hover:bg-rose-500 hover:text-white transition-all shadow-sm">
+                                        <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" /></svg>
+                                    </button>
+                                </form>
+                            </div>
+                            {% else %}
+                            <span class="text-xs font-medium text-slate-300">No actions available</span>
+                            {% endif %}
+                        </td>
+                    </tr>
+                    {% empty %}
+                    <tr>
+                        <td colspan="5" class="px-6 py-12 text-center">
+                            <div class="flex flex-col items-center">
+                                <div class="w-16 h-16 bg-slate-50 rounded-full flex items-center justify-center text-slate-300 mb-4">
+                                    <svg class="w-8 h-8" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" /></svg>
+                                </div>
+                                <h3 class="text-lg font-bold text-slate-800">No Appointments Found</h3>
+                                <p class="text-slate-500 text-sm max-w-xs mx-auto">There are no appointments matching the current filter.</p>
+                            </div>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+{% endblock %}

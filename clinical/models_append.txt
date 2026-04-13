@@ -1,0 +1,33 @@
+
+class AdverseReaction(models.Model):
+    class Severity(models.TextChoices):
+        MILD = 'MILD', 'Mild'
+        MODERATE = 'MODERATE', 'Moderate'
+        SEVERE = 'SEVERE', 'Severe'
+
+    workflow = models.OneToOneField('DonorWorkflow', on_delete=models.CASCADE, related_name='adverse_reaction')
+    
+    # Types of reactions
+    is_faint = models.BooleanField(default=False, verbose_name="Faint / Dizziness")
+    is_hematoma = models.BooleanField(default=False, verbose_name="Hematoma / Bruise")
+    is_nerve_injury = models.BooleanField(default=False, verbose_name="Nerve Injury")
+    is_arterial_puncture = models.BooleanField(default=False, verbose_name="Arterial Puncture")
+    is_citrate_reaction = models.BooleanField(default=False, verbose_name="Citrate Reaction")
+    is_other = models.BooleanField(default=False, verbose_name="Other")
+    
+    other_description = models.CharField(max_length=200, blank=True, null=True)
+    
+    severity = models.CharField(max_length=20, choices=Severity.choices, default=Severity.MILD)
+    
+    # Timing
+    onset_time = models.TimeField(null=True, blank=True)
+    ended_time = models.TimeField(null=True, blank=True)
+    
+    # Management
+    management_notes = models.TextField(blank=True, help_text="What was done? (Ice pack, fluids, leg raise)")
+    
+    examiner = models.ForeignKey(User, on_delete=models.SET_NULL, null=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    def __str__(self):
+        return f"Reaction for {self.workflow} ({self.severity})"

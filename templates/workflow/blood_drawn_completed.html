@@ -1,0 +1,92 @@
+{% extends "base.html" %}
+
+{% block title %}Blood Drawn Completed - CoraBlood{% endblock %}
+
+{% block header %}Blood Drawn Completed{% endblock %}
+
+{% block content %}
+<div class="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden">
+    <div class="p-6 border-b border-slate-100 bg-emerald-50/30">
+        <h3 class="text-lg font-bold text-emerald-800">Completed Blood Draws</h3>
+        <p class="text-sm text-slate-500">Donations successfully collected and ready for processing.</p>
+    </div>
+
+    <div class="overflow-x-auto">
+        <table class="w-full text-left">
+            <thead class="bg-white border-b border-slate-100">
+                <tr>
+                    <th class="px-6 py-4 text-xs font-semibold text-slate-500 uppercase tracking-wider">Donation Code
+                    </th>
+                    <th class="px-6 py-4 text-xs font-semibold text-slate-500 uppercase tracking-wider">Donor</th>
+                    <th class="px-6 py-4 text-xs font-semibold text-slate-500 uppercase tracking-wider">Volume</th>
+                    <th class="px-6 py-4 text-xs font-semibold text-slate-500 uppercase tracking-wider">Duration</th>
+                    <th class="px-6 py-4 text-xs font-semibold text-slate-500 uppercase tracking-wider">Status</th>
+                    <th class="px-6 py-4 text-xs font-semibold text-slate-500 uppercase tracking-wider text-center">
+                        Label 🖨️</th>
+                    <th class="px-6 py-4 text-xs font-semibold text-slate-500 uppercase tracking-wider text-right">
+                        Actions</th>
+                </tr>
+            </thead>
+            <tbody class="divide-y divide-slate-50">
+                {% for wf in workflows %}
+                {% if wf.blood_draw %}
+                <tr class="hover:bg-slate-50 transition-colors">
+                    <td class="px-6 py-4 text-sm font-mono font-bold text-slate-700">{{ wf.donation_code }}</td>
+                    <td class="px-6 py-4 text-sm text-slate-600">{{ wf.donor.full_name }}</td>
+                    <td class="px-6 py-4 text-sm text-slate-600">{{ wf.blood_draw.first_unit_volume|default:"-" }} ml
+                    </td>
+                    <td class="px-6 py-4 text-sm text-slate-600">
+                        {{ wf.blood_draw.duration_minutes|default:"-" }} min
+                    </td>
+                    <td class="px-6 py-4">
+                        <span
+                            class="px-2 py-1 bg-emerald-100 text-emerald-700 text-[10px] uppercase font-bold rounded">Completed</span>
+                    </td>
+                    <td class="px-6 py-4 text-center">
+                        <button onclick="printLabel('{{ wf.id }}')"
+                            class="text-xs font-bold px-3 py-1.5 bg-white border border-slate-200 rounded-lg text-slate-600 hover:text-brand-600 hover:border-brand-200 transition-all shadow-sm">
+                            <i class="fas fa-print"></i>
+                        </button>
+                    </td>
+                    <td class="px-6 py-4 text-right">
+                        <a href="{% url 'donor_workflow' wf.donor.pk %}"
+                            class="inline-flex items-center text-xs font-bold px-3 py-1.5 bg-brand-50 border border-brand-100 rounded-lg text-brand-700 hover:bg-brand-100 transition-all shadow-sm">
+                            View Profile <i class="fas fa-arrow-right ml-1"></i>
+                        </a>
+                    </td>
+                </tr>
+                {% endif %}
+                {% empty %}
+                <tr>
+                    <td colspan="7" class="px-6 py-12 text-center text-slate-400 italic">No completed blood draws yet.
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<script>
+    async function printLabel(workflowId) {
+        if (!confirm("Print label for Donation?")) return;
+        try {
+            const res = await fetch(`/api/donations/${workflowId}/print_label/`, {
+                method: 'POST',
+                headers: {
+                    'X-CSRFToken': '{{ csrf_token }}'
+                }
+            });
+            const data = await res.json();
+            if (res.ok) {
+                alert(`✅ Label Printing Initiated for ${data.code}`);
+            } else {
+                alert('Error: ' + (data.message || 'Print failed'));
+            }
+        } catch (e) {
+            alert('Network Error');
+            console.error(e);
+        }
+    }
+</script>
+{% endblock %}

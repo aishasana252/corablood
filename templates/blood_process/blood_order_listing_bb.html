@@ -1,0 +1,175 @@
+{% extends 'base.html' %}
+
+{% block title %}Blood Order Listing | CoraBlood AI{% endblock %}
+{% block header %}Blood Order Listing{% endblock %}
+
+{% block content %}
+<div class="space-y-6" x-data="{ expanded: true }">
+
+    <!-- Filters Section -->
+    <div class="bg-white rounded-lg border border-slate-200 shadow-sm p-6 relative">
+
+        <div class="flex flex-col gap-4">
+            <!-- Row 1 -->
+            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                <!-- Patient MRN -->
+                <div class="flex items-center gap-4">
+                    <label class="w-24 text-sm font-medium text-slate-700">Patient MRN</label>
+                    <input type="text" placeholder="Patient MRN"
+                        class="flex-1 rounded border-slate-300 px-3 py-2 text-sm focus:ring-brand-500 focus:border-brand-500">
+                </div>
+                <!-- Order Code -->
+                <div class="flex items-center gap-4">
+                    <label class="w-24 text-sm font-medium text-slate-700">Order Code</label>
+                    <input type="text" placeholder="Order Code"
+                        class="flex-1 rounded border-slate-300 px-3 py-2 text-sm focus:ring-brand-500 focus:border-brand-500">
+                </div>
+                <!-- Order Status -->
+                <div class="flex items-center gap-4">
+                    <label class="w-24 text-sm font-medium text-slate-700">Order Status</label>
+                    <select
+                        class="flex-1 rounded border-slate-300 px-3 py-2 text-sm focus:ring-brand-500 focus:border-brand-500 text-slate-600">
+                        <option>All Order Status</option>
+                        <option>New</option>
+                        <option>In Progress</option>
+                    </select>
+                </div>
+            </div>
+
+            <!-- Row 2 -->
+            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                <!-- Unit Type -->
+                <div class="flex items-center gap-4">
+                    <label class="w-24 text-sm font-medium text-slate-700">Unit Type</label>
+                    <select
+                        class="flex-1 rounded border-slate-300 px-3 py-2 text-sm focus:ring-brand-500 focus:border-brand-500 text-slate-600">
+                        <option>All Unit Types</option>
+                        <option>PRBC</option>
+                        <option>FFP</option>
+                    </select>
+                </div>
+                <!-- Site -->
+                <div class="flex items-center gap-4">
+                    <label class="w-24 text-sm font-medium text-slate-700">Site</label>
+                    <select
+                        class="flex-1 rounded border-slate-300 px-3 py-2 text-sm focus:ring-brand-500 focus:border-brand-500 text-slate-600">
+                        <option value="SMC1">الفرع الأول</option>
+                        <option value="SMC2">الفرع الثاني</option>
+                    </select>
+                </div>
+                <!-- Created Date -->
+                <div class="flex items-center gap-4">
+                    <label class="w-24 text-sm font-medium text-slate-700">Created Date</label>
+                    <input type="text" placeholder="from/to/hijri"
+                        class="flex-1 rounded border-slate-300 px-3 py-2 text-sm focus:ring-brand-500 focus:border-brand-500 text-right"
+                        dir="rtl">
+                </div>
+            </div>
+
+            <!-- Row 3 -->
+            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                <!-- Source -->
+                <div class="flex items-center gap-4">
+                    <label class="w-24 text-sm font-medium text-slate-700">Source</label>
+                    <select
+                        class="flex-1 rounded border-slate-300 px-3 py-2 text-sm focus:ring-brand-500 focus:border-brand-500 text-slate-600">
+                        <option>All Sources</option>
+                    </select>
+                </div>
+                <!-- Spacer -->
+                <div></div>
+                <!-- Search Button -->
+                <div class="flex justify-end">
+                    <button
+                        class="px-6 py-2 bg-emerald-500 hover:bg-emerald-600 text-white text-sm font-semibold rounded shadow-sm transition-colors flex items-center gap-2">
+                        <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                        </svg>
+                        Search
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Results Table -->
+    <div class="bg-white rounded-lg border border-slate-200 shadow-sm overflow-hidden">
+        <div class="overflow-x-auto">
+            <table class="min-w-full divide-y divide-slate-100">
+                <thead class="bg-white">
+                    <tr>
+                        <th class="px-4 py-3 text-left text-xs font-bold text-slate-900 uppercase">#</th>
+                        <th class="px-4 py-3 text-left text-xs font-bold text-slate-900 uppercase">MRN</th>
+                        <th class="px-4 py-3 text-left text-xs font-bold text-slate-900 uppercase">Patient</th>
+                        <th class="px-4 py-3 text-left text-xs font-bold text-slate-900 uppercase">Priority</th>
+                        <th class="px-4 py-3 text-left text-xs font-bold text-slate-900 uppercase">Type</th>
+                        <th class="px-4 py-3 text-left text-xs font-bold text-slate-900 uppercase">BloodGroup</th>
+                        <th class="px-4 py-3 text-left text-xs font-bold text-slate-900 uppercase">Unit Type</th>
+                        <th class="px-4 py-3 text-left text-xs font-bold text-slate-900 uppercase">Quantity</th>
+                        <th class="px-4 py-3 text-left text-xs font-bold text-slate-900 uppercase w-1/4">Notes</th>
+                        <th class="px-4 py-3 text-left text-xs font-bold text-slate-900 uppercase">Order Status</th>
+                        <th class="px-4 py-3 text-left text-xs font-bold text-slate-900 uppercase">Creation</th>
+                        <th class="px-4 py-3 text-right text-xs font-bold text-slate-900 uppercase">Actions</th>
+                    </tr>
+                </thead>
+                <tbody class="divide-y divide-slate-50">
+                    {% for item in orders %}
+                    <tr class="hover:bg-slate-50 align-top">
+                        <td class="px-4 py-4 text-xs font-bold text-slate-800">{{ item.code }}</td>
+                        <td class="px-4 py-4 text-xs text-slate-600">{{ item.mrn }}</td>
+                        <td class="px-4 py-4 text-xs text-slate-600">{{ item.patient_name }}</td>
+                        <td class="px-4 py-4 text-xs text-slate-600 font-medium">{{ item.priority }}</td>
+                        <td class="px-4 py-4 text-xs text-slate-600">{{ item.type }}</td>
+                        <td class="px-4 py-4 text-xs font-bold text-slate-800">{{ item.blood_group }}</td>
+                        <td class="px-4 py-4 text-xs text-slate-600">{{ item.unit_type }}</td>
+                        <td class="px-4 py-4 text-xs text-slate-600">{{ item.quantity }}</td>
+                        <td class="px-4 py-4 text-xs text-red-500 font-medium leading-relaxed">
+                            {{ item.notes|safe }}
+                        </td>
+                        <td class="px-4 py-4 text-xs text-slate-600">
+                            <div class="mb-1">
+                                <span
+                                    class="px-2 py-0.5 bg-sky-600 text-white rounded text-[10px] font-bold inline-block">{{
+                                    item.status_label }}</span>
+                            </div>
+                            <div class="text-[10px] text-slate-500 leading-tight">
+                                <div>On : {{ item.status_date }}</div>
+                                <div>By : {{ item.status_by }}</div>
+                            </div>
+                        </td>
+                        <td class="px-4 py-4 text-[10px] text-slate-500 leading-tight">
+                            <div>CreatedBy: {{ item.created_by }}</div>
+                            <div>CreatedDate: {{ item.created_date }}</div>
+                        </td>
+                        <td class="px-4 py-4 text-right align-top">
+                            <a href="{% url 'blood_order_detail' item.code %}"
+                                class="px-3 py-1 bg-sky-500 hover:bg-sky-600 text-white text-xs font-medium rounded shadow-sm transition-colors inline-block">
+                                Actions
+                            </a>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+
+        <!-- Pagination Placeholder -->
+        <div
+            class="px-6 py-4 border-t border-slate-100 flex items-center justify-center text-sm text-slate-500 bg-slate-50/50">
+            <span class="hover:text-brand-600 cursor-pointer text-xs">« Previous</span>
+            <span class="mx-2 px-2 py-0.5 bg-sky-600 text-white rounded text-xs font-bold">1</span>
+            <span class="mx-1 hover:text-brand-600 cursor-pointer text-xs">2</span>
+            <span class="mx-1 hover:text-brand-600 cursor-pointer text-xs">3</span>
+            <span class="mx-1 text-slate-400 text-xs">...</span>
+            <span class="mx-1 hover:text-brand-600 cursor-pointer text-xs">20</span>
+            <span class="ml-2 hover:text-brand-600 cursor-pointer text-xs">Next »</span>
+        </div>
+    </div>
+
+    <div class="flex justify-between items-center text-[10px] text-slate-400 px-2">
+        <div>Powered by <span class="font-bold text-brand-600">CoraBlood</span>.</div>
+        <div>Version 1.0.22</div>
+    </div>
+</div>
+{% endblock %}

@@ -1,0 +1,77 @@
+version: "2"
+type: backend
+tech_stack:
+  - Python
+  - Django
+  - PostgreSQL
+  - REST Framework
+  - Alpine.js
+features:
+  - name: Donor Authentication & Portal
+    description: Portal for donors to register, login, and manage profile
+    files:
+      - donors/portal_views.py
+      - donors/models.py
+    endpoints:
+      - method: POST
+        path: /portal/register/
+        description: Register a new donor
+        auth_required: false
+      - method: POST
+        path: /portal/login/
+        description: Login to donor portal
+        auth_required: false
+
+  - name: Appointment Management
+    description: Booking appointments at specific collection centers
+    files:
+      - donors/portal_views.py
+      - donors/models.py
+    endpoints:
+      - method: POST
+        path: /portal/dashboard/
+        description: Book a new appointment
+        auth_required: true
+        request_schema:
+          body:
+            hospital_id: integer
+            appointment_date: date
+            appointment_time: time
+
+  - name: Medical Questionnaire
+    description: Health screening with digital signatures and portal sync
+    files:
+      - donors/portal_views.py
+      - clinical/models.py
+    endpoints:
+      - method: POST
+        path: /portal/questionnaire/
+        description: Submit medical questionnaire with signature
+        auth_required: true
+
+  - name: Medication Review
+    description: Categorized medication tracking and review
+    files:
+      - donors/portal_views.py
+      - clinical/models.py
+    endpoints:
+      - method: POST
+        path: /portal/medication/
+        description: Submit medication records
+        auth_required: true
+
+  - name: Clinical Workflow (Admin)
+    description: Nurse/Staff interface for managing the donation process
+    files:
+      - donors/views.py
+      - clinical/serializers.py
+    endpoints:
+      - method: GET
+        path: /api/donations/{id}/
+        description: Fetch full workflow details
+        auth_required: true
+
+known_limitations:
+  - issue: "Google GenerativeAI package deprecated"
+    location: "ai_manager/services.py"
+    impact: "Needs migration to google.genai"

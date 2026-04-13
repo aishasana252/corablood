@@ -1,0 +1,145 @@
+{% extends 'base.html' %}
+
+{% block title %}Transfusion Orders | CoraBlood AI{% endblock %}
+
+{% block header %}Transfusion Orders{% endblock %}
+
+{% block content %}
+<div class="space-y-6">
+
+    <!-- Filters Section -->
+    <div class="bg-gray-50/50 p-4 rounded-lg flex flex-wrap items-center gap-6 text-sm text-slate-600">
+        <!-- MRN -->
+        <div class="flex items-center gap-2">
+            <label class="font-bold text-slate-700">MRN</label>
+            <input type="text" placeholder="MRN"
+                class="px-3 py-1 border border-slate-300 rounded focus:ring-sky-500 focus:border-sky-500 w-32">
+        </div>
+
+        <!-- Result Date -->
+        <div class="flex items-center gap-2">
+            <label class="font-bold text-slate-700">Result Date</label>
+            <span class="text-slate-500">From :</span>
+            <input type="date" value="2026-01-31"
+                class="px-2 py-1 border border-slate-300 rounded focus:ring-sky-500 focus:border-sky-500 text-xs">
+            <span class="text-slate-500">To :</span>
+            <input type="date" value="2026-02-03"
+                class="px-2 py-1 border border-slate-300 rounded focus:ring-sky-500 focus:border-sky-500 text-xs">
+        </div>
+
+        <!-- Site -->
+        <div class="flex items-center gap-2 ml-auto">
+            <label class="font-bold text-slate-700">Site</label>
+            <select
+                class="px-3 py-1 border border-slate-300 rounded focus:ring-sky-500 focus:border-sky-500 w-32 bg-white">
+                <option value="SMC1">الفرع الأول</option>
+                <option value="SMC2">الفرع الثاني</option>
+            </select>
+        </div>
+    </div>
+
+    <!-- Main Card -->
+    <div class="bg-white rounded-lg border border-slate-200 shadow-sm">
+        <div class="px-6 py-4 border-b border-slate-100 flex justify-between items-center">
+            <h3 class="text-lg font-bold text-sky-600">Transfusion Orders</h3>
+            <button class="text-slate-400 hover:text-slate-600">
+                <span class="text-xl">−</span>
+            </button>
+        </div>
+
+        <div class="overflow-x-auto">
+            <table class="min-w-full divide-y divide-slate-100">
+                <thead>
+                    <tr class="bg-white">
+                        <th class="px-4 py-3 text-left text-xs font-bold text-slate-800">Patient</th>
+                        <th class="px-4 py-3 text-left text-xs font-bold text-slate-800">Qty</th>
+                        <th class="px-4 py-3 text-left text-xs font-bold text-slate-800">Note</th>
+                        <th class="px-4 py-3 text-left text-xs font-bold text-slate-800">Site</th>
+                        <th class="px-4 py-3 text-left text-xs font-bold text-slate-800">Source</th>
+                        <th class="px-4 py-3 text-left text-xs font-bold text-slate-800">Priority</th>
+                        <th class="px-4 py-3 text-left text-xs font-bold text-slate-800">Component Type</th>
+                        <th class="px-4 py-3 text-left text-xs font-bold text-slate-800">Main Request Qty</th>
+                        <th class="px-4 py-3 text-left text-xs font-bold text-slate-800">Blood Group</th>
+                        <th class="px-4 py-3 text-left text-xs font-bold text-slate-800">Main Order Code</th>
+                        <th class="px-4 py-3 text-left text-xs font-bold text-slate-800 w-1/6">Status</th>
+                        <th class="px-4 py-3 text-left text-xs font-bold text-slate-800 w-1/6">Creation</th>
+                        <th class="px-4 py-3 text-right text-xs font-bold text-slate-800">Actions</th>
+                    </tr>
+                </thead>
+                <tbody class="divide-y divide-slate-50">
+                    {% for order in orders %}
+                    <tr class="hover:bg-slate-50 align-top">
+                        <!-- Patient -->
+                        <td class="px-4 py-4 text-xs text-slate-600 font-medium">
+                            {{ order.patient_name }} - {{ order.mrn }}
+                        </td>
+
+                        <!-- Qty -->
+                        <td class="px-4 py-4">
+                            <span class="bg-sky-600 text-white text-[10px] font-bold px-2 py-0.5 rounded shadow-sm">{{
+                                order.qty }}</span>
+                        </td>
+
+                        <!-- Note -->
+                        <td class="px-4 py-4 text-xs text-slate-600">{{ order.note }}</td>
+
+                        <!-- Site -->
+                        <td class="px-4 py-4">
+                            <span
+                                class="bg-sky-600 text-white text-[10px] font-bold px-2 py-0.5 rounded shadow-sm">الفرع الأول</span>
+                        </td>
+
+                        <!-- Source -->
+                        <td class="px-4 py-4 text-xs text-slate-600">InPatient</td>
+
+                        <!-- Priority -->
+                        <td class="px-4 py-4 text-xs text-slate-600">Normal</td>
+
+                        <!-- Component Type -->
+                        <td class="px-4 py-4 text-xs text-slate-600 uppercase">{{ order.unit_type }}</td>
+
+                        <!-- Main Request Qty -->
+                        <td class="px-4 py-4 text-xs text-slate-600">{{ order.qty }} Unit</td>
+
+                        <!-- Blood Group -->
+                        <td class="px-4 py-4 text-xs text-slate-600">{{ order.blood_group }}</td>
+
+                        <!-- Main Order Code -->
+                        <td class="px-4 py-4 text-xs text-slate-600">{{ order.code }}</td>
+
+                        <!-- Status -->
+                        <td class="px-4 py-4">
+                            <div class="space-y-1">
+                                <span
+                                    class="bg-sky-600 text-white px-2 py-0.5 rounded text-[10px] font-bold inline-block">{{
+                                    order.status }}</span>
+                                <div class="text-[10px] text-slate-500 leading-tight">
+                                    By: {{ order.status_by }}<br>
+                                    By: {{ order.status_date }}
+                                </div>
+                            </div>
+                        </td>
+
+                        <!-- Creation -->
+                        <td class="px-4 py-4">
+                            <div class="text-[10px] text-slate-500 leading-tight">
+                                CreatedBy: {{ order.created_by }}<br>
+                                CreatedDate: {{ order.created_date }}
+                            </div>
+                        </td>
+
+                        <!-- Actions -->
+                        <td class="px-4 py-4 text-right">
+                            <a href="#"
+                                class="bg-sky-600 hover:bg-sky-700 text-white text-[10px] font-medium px-3 py-1.5 rounded transition-colors shadow-sm inline-block whitespace-nowrap">
+                                Open Main Request
+                            </a>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+{% endblock %}

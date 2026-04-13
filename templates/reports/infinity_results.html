@@ -1,0 +1,101 @@
+{% extends 'base.html' %}
+
+{% block title %}infinity Results | CoraBlood AI{% endblock %}
+{% block header %}infinity Results{% endblock %}
+
+{% block content %}
+<div class="space-y-6" x-data="{ expanded: true }">
+
+    <!-- Filters Section -->
+    <div class="bg-white rounded-lg border border-slate-200 shadow-sm p-6">
+        <h2 class="text-sm font-bold text-slate-800 mb-4 border-b border-slate-100 pb-2">infinity Results</h2>
+
+        <!-- Row 1: Lab Number & Test Code -->
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-4">
+            <div class="flex items-center gap-4">
+                <label class="w-32 text-sm font-medium text-slate-700">Lab Number</label>
+                <input type="text" placeholder="Lab Number"
+                    class="flex-1 rounded border-slate-300 px-3 py-2 text-sm focus:ring-brand-500 focus:border-brand-500">
+            </div>
+            <div class="flex items-center gap-4">
+                <label class="w-32 text-sm font-medium text-slate-700">Test Code</label>
+                <input type="text" placeholder="Test Code"
+                    class="flex-1 rounded border-slate-300 px-3 py-2 text-sm focus:ring-brand-500 focus:border-brand-500">
+            </div>
+        </div>
+
+        <!-- Row 2: Donor Name -->
+        <div class="grid grid-cols-1 md:grid-cols-1 gap-6 mb-4">
+            <div class="flex items-center gap-4">
+                <label class="w-32 text-sm font-medium text-slate-700">Donor Name [fname + lname in test]</label>
+                <input type="text" placeholder="donor Name"
+                    class="w-full md:w-1/2 rounded border-slate-300 px-3 py-2 text-sm focus:ring-brand-500 focus:border-brand-500">
+            </div>
+        </div>
+
+        <!-- Row 3: Date Range -->
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <div class="flex items-center gap-4">
+                <label class="w-32 text-sm font-medium text-slate-700">Start Date</label>
+                <input type="date" value="2025-02-08"
+                    class="flex-1 rounded border-slate-300 px-3 py-2 text-sm focus:ring-brand-500 focus:border-brand-500">
+            </div>
+            <div class="flex items-center gap-4">
+                <label class="w-32 text-sm font-medium text-slate-700">End Date</label>
+                <input type="date" value="2026-02-03"
+                    class="flex-1 rounded border-slate-300 px-3 py-2 text-sm focus:ring-brand-500 focus:border-brand-500">
+            </div>
+        </div>
+    </div>
+
+    <!-- Results Table -->
+    <div class="bg-white rounded-lg border border-slate-200 shadow-sm overflow-hidden">
+        <div class="p-4 border-b border-slate-100 bg-slate-50 flex justify-between items-center cursor-pointer"
+            @click="expanded = !expanded">
+            <h2 class="text-lg font-bold text-slate-800">Results List</h2>
+            <svg class="w-5 h-5 text-slate-500 transform transition-transform" :class="expanded ? 'rotate-180' : ''"
+                fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
+            </svg>
+        </div>
+
+        <div x-show="expanded" class="border-t border-slate-100 overflow-x-auto">
+            <table class="min-w-full divide-y divide-slate-100">
+                <thead class="bg-white">
+                    <tr>
+                        <th class="px-4 py-3 text-left text-xs font-bold text-slate-900 uppercase">LabNumber</th>
+                        <th class="px-4 py-3 text-left text-xs font-bold text-slate-900 uppercase">TestCode</th>
+                        <th class="px-4 py-3 text-left text-xs font-bold text-slate-900 uppercase">TestName</th>
+                        <th class="px-4 py-3 text-left text-xs font-bold text-slate-900 uppercase">SampleType</th>
+                        <th class="px-4 py-3 text-left text-xs font-bold text-slate-900 uppercase">Result</th>
+                        <th class="px-4 py-3 text-left text-xs font-bold text-slate-900 uppercase">Result Date</th>
+                        <th class="px-4 py-3 text-left text-xs font-bold text-slate-900 uppercase">TechnicianName</th>
+                        <th class="px-4 py-3 text-left text-xs font-bold text-slate-900 uppercase">DonorName</th>
+                        <th class="px-4 py-3 text-right text-xs font-bold text-slate-900 uppercase"></th>
+                    </tr>
+                </thead>
+                <tbody class="divide-y divide-slate-50">
+                    {% for item in results %}
+                    <tr class="hover:bg-slate-50">
+                        <td class="px-4 py-3 text-sm text-slate-600 font-medium">{{ item.lab_number }}</td>
+                        <td class="px-4 py-3 text-sm text-slate-600">{{ item.test_code }}</td>
+                        <td class="px-4 py-3 text-sm text-slate-600">{{ item.test_name }}</td>
+                        <td class="px-4 py-3 text-sm text-slate-600">{{ item.sample_type }}</td>
+                        <td class="px-4 py-3 text-sm text-slate-600">{{ item.result }}</td>
+                        <td class="px-4 py-3 text-sm text-slate-600">{{ item.result_date }}</td>
+                        <td class="px-4 py-3 text-sm text-slate-600">{{ item.technician_name }}</td>
+                        <td class="px-4 py-3 text-sm text-slate-600">{{ item.donor_name }}</td>
+                        <td class="px-4 py-3 text-right">
+                            <button
+                                class="px-3 py-1 bg-sky-600 hover:bg-sky-700 text-white text-xs font-medium rounded shadow-sm transition-colors">
+                                show org msg
+                            </button>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+{% endblock %}

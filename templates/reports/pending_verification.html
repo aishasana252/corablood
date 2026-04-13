@@ -1,0 +1,133 @@
+{% extends 'base.html' %}
+
+{% block title %}Pending Verification | CoraBlood AI{% endblock %}
+{% block header %}
+<span x-text="lang === 'en' ? 'Pending Verification' : 'التحقق المعلق'"></span>
+{% endblock %}
+
+{% block content %}
+<div class="space-y-6">
+
+    <!-- Section: Pending Disposition To Store Review -->
+    <div class="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden">
+        <div class="px-6 py-4 border-b border-slate-100 flex justify-between items-center bg-slate-50/50">
+            <h3 class="text-sm font-bold text-slate-700 uppercase tracking-wide">
+                Pending Disposition To store Review
+            </h3>
+        </div>
+
+        <div class="overflow-x-auto">
+            <table class="min-w-full divide-y divide-slate-100">
+                <thead class="bg-slate-50">
+                    <tr>
+                        <th scope="col"
+                            class="px-6 py-3 text-left text-[11px] font-bold text-slate-500 uppercase tracking-wider">#
+                        </th>
+                        <th scope="col"
+                            class="px-6 py-3 text-left text-[11px] font-bold text-slate-500 uppercase tracking-wider">
+                            UnitNumber</th>
+                        <th scope="col"
+                            class="px-6 py-3 text-left text-[11px] font-bold text-slate-500 uppercase tracking-wider">
+                            ComponentType</th>
+                        <th scope="col"
+                            class="px-6 py-3 text-left text-[11px] font-bold text-slate-500 uppercase tracking-wider">
+                            Volume</th>
+                        <th scope="col"
+                            class="px-6 py-3 text-left text-[11px] font-bold text-slate-500 uppercase tracking-wider">
+                            BloodGroup</th>
+                        <th scope="col"
+                            class="px-6 py-3 text-center text-[11px] font-bold text-slate-500 uppercase tracking-wider">
+                            LabelChecked</th>
+                        <th scope="col"
+                            class="px-6 py-3 text-center text-[11px] font-bold text-slate-500 uppercase tracking-wider">
+                            ExpiryDateChecked</th>
+                        <th scope="col"
+                            class="px-6 py-3 text-center text-[11px] font-bold text-slate-500 uppercase tracking-wider">
+                            VisualInspection</th>
+                        <th scope="col"
+                            class="px-6 py-3 text-left text-[11px] font-bold text-slate-500 uppercase tracking-wider">
+                            Notes</th>
+                        <th scope="col"
+                            class="px-6 py-3 text-left text-[11px] font-bold text-slate-500 uppercase tracking-wider">
+                            Creation</th>
+                        <th scope="col"
+                            class="px-6 py-3 text-right text-[11px] font-bold text-slate-500 uppercase tracking-wider">
+                            Action</th>
+                    </tr>
+                </thead>
+                <tbody class="divide-y divide-slate-100">
+                    {% for comp in pending_verification %}
+                    <tr class="hover:bg-slate-50/50 transition-colors">
+                        <td class="px-6 py-4 whitespace-nowrap">
+                            <span class="font-mono text-xs text-white bg-slate-500 px-2 py-0.5 rounded">
+                                {{ comp.workflow.blood_draw.bag_serial_number|default:comp.workflow.id }}
+                            </span>
+                        </td>
+                        <td class="px-6 py-4 whitespace-nowrap text-xs font-mono text-slate-600">
+                            {{ comp.unit_number|default:"00051383" }}
+                        </td>
+                        <td class="px-6 py-4 whitespace-nowrap text-xs text-slate-600 uppercase">
+                            {{ comp.component_type|default:"PRBC" }}
+                        </td>
+                        <td class="px-6 py-4 whitespace-nowrap text-xs text-slate-600">
+                            {{ comp.volume_ml|default:"340" }}
+                        </td>
+                        <td class="px-6 py-4 whitespace-nowrap text-xs text-slate-600 font-bold">
+                            {{ comp.blood_group|default:"O-" }}
+                        </td>
+
+                        <!-- Checkmarks -->
+                        <td class="px-6 py-4 whitespace-nowrap text-center">
+                            <svg class="w-5 h-5 text-green-500 mx-auto" fill="none" viewBox="0 0 24 24"
+                                stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                    d="M5 13l4 4L19 7" />
+                            </svg>
+                        </td>
+                        <td class="px-6 py-4 whitespace-nowrap text-center">
+                            <svg class="w-5 h-5 text-green-500 mx-auto" fill="none" viewBox="0 0 24 24"
+                                stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                    d="M5 13l4 4L19 7" />
+                            </svg>
+                        </td>
+                        <td class="px-6 py-4 whitespace-nowrap text-center">
+                            <svg class="w-5 h-5 text-green-500 mx-auto" fill="none" viewBox="0 0 24 24"
+                                stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                    d="M5 13l4 4L19 7" />
+                            </svg>
+                        </td>
+
+                        <td class="px-6 py-4 whitespace-nowrap text-xs text-slate-400 italic">
+                            -
+                        </td>
+
+                        <td class="px-6 py-4 whitespace-nowrap text-xs text-slate-500">
+                            <div class="flex flex-col">
+                                <span class="text-slate-700">CreatedBy: abu-zahr</span>
+                                <span class="text-[10px] text-slate-400">CreatedDate: {{ comp.created_at|date:"d/m/Y h:i
+                                    A" }}</span>
+                            </div>
+                        </td>
+
+                        <td class="px-6 py-4 whitespace-nowrap text-right">
+                            <button
+                                class="px-3 py-1 bg-green-500 text-white text-xs font-bold rounded shadow-sm hover:bg-green-600 transition-colors">
+                                Review And Approve
+                            </button>
+                        </td>
+                    </tr>
+                    {% empty %}
+                    <tr>
+                        <td colspan="11" class="px-6 py-12 text-center text-slate-400 text-sm">
+                            No verification items pending.
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+{% endblock %}

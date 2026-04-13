@@ -1,0 +1,240 @@
+{% extends 'base.html' %}
+
+{% block title %}New Blood Request | CoraBlood AI{% endblock %}
+{% block header %}
+<span x-text="lang === 'en' ? 'New Blood Request' : 'طلب دم جديد'"></span>
+{% endblock %}
+
+{% block content %}
+<div class="max-w-4xl mx-auto" x-data="orderForm()">
+
+    <!-- Priority Switcher -->
+    <div class="grid grid-cols-2 gap-4 mb-8">
+        <button @click="setPriority('Normal')"
+            class="flex items-center justify-center gap-3 p-6 rounded-2xl transition-all duration-300 border-2"
+            :class="formData.priority === 'Normal' ? 'bg-white border-brand-500 shadow-xl scale-105 z-10' : 'bg-slate-50 border-transparent opacity-60 hover:opacity-100'">
+            <div class="w-12 h-12 rounded-full flex items-center justify-center transition-colors"
+                :class="formData.priority === 'Normal' ? 'bg-brand-50 text-brand-600' : 'bg-slate-200 text-slate-500'">
+                <svg class="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                        d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                </svg>
+            </div>
+            <div class="text-left">
+                <h3 class="font-display font-bold text-lg"
+                    :class="formData.priority === 'Normal' ? 'text-slate-900' : 'text-slate-500'">Routine</h3>
+                <p class="text-xs text-slate-400">Standard Crossmatch (45 min)</p>
+            </div>
+        </button>
+
+        <button @click="setPriority('STAT')"
+            class="flex items-center justify-center gap-3 p-6 rounded-2xl transition-all duration-300 border-2"
+            :class="formData.priority === 'STAT' ? 'bg-rose-50 border-rose-500 shadow-xl scale-105 z-10' : 'bg-slate-50 border-transparent opacity-60 hover:opacity-100'">
+            <div class="w-12 h-12 rounded-full flex items-center justify-center transition-colors"
+                :class="formData.priority === 'STAT' ? 'bg-rose-100 text-rose-600' : 'bg-slate-200 text-slate-500'">
+                <svg class="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                        d="M13 10V3L4 14h7v7l9-11h-7z" />
+                </svg>
+            </div>
+            <div class="text-left">
+                <h3 class="font-display font-bold text-lg"
+                    :class="formData.priority === 'STAT' ? 'text-rose-700' : 'text-slate-500'">Emergency (STAT)</h3>
+                <p class="text-xs" :class="formData.priority === 'STAT' ? 'text-rose-500' : 'text-slate-400'">Skip
+                    Crossmatch (Immediate)</p>
+            </div>
+        </button>
+    </div>
+
+    <!-- Main Form -->
+    <form @submit.prevent="submitForm"
+        class="bg-white p-8 rounded-[2rem] shadow-sm border border-slate-100 space-y-8 relative overflow-hidden transition-colors duration-500"
+        :class="formData.priority === 'STAT' ? 'border-rose-100 ring-4 ring-rose-50' : ''">
+
+        <!-- Emergency Warning -->
+        <div x-show="formData.priority === 'STAT'" x-transition
+            class="bg-rose-50 border-l-4 border-rose-500 p-4 rounded-r-xl flex items-start gap-4">
+            <svg class="w-6 h-6 text-rose-600 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                    d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+            </svg>
+            <div>
+                <h4 class="font-bold text-rose-800">Emergency Protocol Active</h4>
+                <p class="text-sm text-rose-600">You are authorizing the release of uncrossmatched blood. Physician
+                    approval is mandatory.</p>
+            </div>
+        </div>
+
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-8">
+            <!-- Patient Info -->
+            <div class="space-y-6">
+                <h3 class="text-sm font-bold text-slate-400 uppercase tracking-wider border-b border-slate-100 pb-2">
+                    Patient Details</h3>
+
+                <div>
+                    <label class="block text-xs font-bold text-slate-500 mb-1">MRN (Medical Record No.)</label>
+                    <input type="text" x-model="formData.patient_mrn"
+                        class="w-full bg-slate-50 border-0 rounded-xl px-4 py-3 focus:ring-2 focus:ring-brand-500"
+                        placeholder="e.g. 10023456" required>
+                </div>
+                <div>
+                    <label class="block text-xs font-bold text-slate-500 mb-1">Patient Name</label>
+                    <input type="text" x-model="formData.patient_name"
+                        class="w-full bg-slate-50 border-0 rounded-xl px-4 py-3 focus:ring-2 focus:ring-brand-500"
+                        placeholder="Full Name" required>
+                </div>
+                <div>
+                    <label class="block text-xs font-bold text-slate-500 mb-1">Diagnosis</label>
+                    <input type="text" x-model="formData.diagnosis"
+                        class="w-full bg-slate-50 border-0 rounded-xl px-4 py-3 focus:ring-2 focus:ring-brand-500"
+                        placeholder="Reason for transfusion">
+                </div>
+            </div>
+
+            <!-- Clinical Requirements -->
+            <div class="space-y-6">
+                <h3 class="text-sm font-bold text-slate-400 uppercase tracking-wider border-b border-slate-100 pb-2">
+                    Blood Component</h3>
+
+                <div class="grid grid-cols-2 gap-4">
+                    <div>
+                        <label class="block text-xs font-bold text-slate-500 mb-1">Blood Group</label>
+                        <select x-model="formData.required_blood_group"
+                            class="w-full bg-slate-50 border-0 rounded-xl px-4 py-3 focus:ring-2 focus:ring-brand-500">
+                            <option value="Unknown">Unknown</option>
+                            <option value="O+">O+</option>
+                            <option value="O-">O-</option>
+                            <option value="A+">A+</option>
+                            <option value="A-">A-</option>
+                            <!-- Others -->
+                        </select>
+                    </div>
+                    <div>
+                        <label class="block text-xs font-bold text-slate-500 mb-1">Component</label>
+                        <select x-model="formData.required_component"
+                            class="w-full bg-slate-50 border-0 rounded-xl px-4 py-3 focus:ring-2 focus:ring-brand-500">
+                            <option value="PRBC">Packed RBC</option>
+                            <option value="FFP">Fresh Frozen Plasma</option>
+                            <option value="PLT">Platelets</option>
+                        </select>
+                    </div>
+                </div>
+
+                <div>
+                    <label class="block text-xs font-bold text-slate-500 mb-1">Quantity (Units)</label>
+                    <div class="flex items-center gap-4">
+                        <button type="button" @click="if(formData.quantity > 1) formData.quantity--"
+                            class="w-10 h-10 rounded-xl bg-slate-100 text-slate-600 hover:bg-slate-200 font-bold">-</button>
+                        <span class="text-2xl font-bold font-mono w-12 text-center" x-text="formData.quantity"></span>
+                        <button type="button" @click="formData.quantity++"
+                            class="w-10 h-10 rounded-xl bg-slate-100 text-slate-600 hover:bg-slate-200 font-bold">+</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Emergency Compliance Fields (Conditional) -->
+        <div x-show="formData.priority === 'STAT'" x-transition class="pt-8 border-t border-rose-100">
+            <h3 class="text-sm font-bold text-rose-500 uppercase tracking-wider mb-4 flex items-center gap-2">
+                <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                        d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
+                </svg>
+                Emergency Authorization
+            </h3>
+
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-6 bg-rose-50/50 p-6 rounded-2xl border border-rose-100">
+                <div>
+                    <label class="block text-xs font-bold text-rose-700 mb-1">Ordering Physician</label>
+                    <input type="text" x-model="formData.doctor_auth" :required="formData.priority === 'STAT'"
+                        class="w-full bg-white border-rose-200 rounded-xl px-4 py-3 focus:ring-2 focus:ring-rose-500 placeholder:text-rose-300"
+                        placeholder="Dr. Name / ID">
+                </div>
+                <div>
+                    <label class="block text-xs font-bold text-rose-700 mb-1">Nurse Badge ID</label>
+                    <input type="text" x-model="formData.nurse_badge_id" :required="formData.priority === 'STAT'"
+                        class="w-full bg-white border-rose-200 rounded-xl px-4 py-3 focus:ring-2 focus:ring-rose-500 placeholder:text-rose-300"
+                        placeholder="Badge ID">
+                </div>
+                <div class="md:col-span-2">
+                    <label class="block text-xs font-bold text-rose-700 mb-1">Clinical Justification</label>
+                    <input type="text" x-model="formData.emergency_justification"
+                        :required="formData.priority === 'STAT'"
+                        class="w-full bg-white border-rose-200 rounded-xl px-4 py-3 focus:ring-2 focus:ring-rose-500 placeholder:text-rose-300"
+                        placeholder="Why is crossmatch being skipped?">
+                </div>
+            </div>
+        </div>
+
+        <!-- Submit -->
+        <div class="flex justify-end pt-6 border-t border-slate-100">
+            <button type="submit" :disabled="loading"
+                class="px-10 py-4 font-bold text-white rounded-2xl shadow-xl transition-all hover:-translate-y-1 disabled:opacity-50"
+                :class="formData.priority === 'STAT' ? 'bg-rose-600 shadow-rose-200 hover:shadow-rose-400' : 'bg-slate-900 shadow-slate-200 hover:shadow-slate-400'">
+                <span
+                    x-text="loading ? 'Processing...' : (formData.priority === 'STAT' ? 'Issue Emergency Order' : 'Submit Request')"></span>
+            </button>
+        </div>
+
+    </form>
+
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    function orderForm() {
+        return {
+            loading: false,
+            formData: {
+                priority: 'Normal', // Normal, STAT
+                request_type: 'CrossMatch',
+                patient_mrn: '',
+                patient_name: '',
+                diagnosis: '',
+                required_blood_group: 'Unknown',
+                required_component: 'PRBC',
+                quantity: 1,
+                doctor_auth: '',
+                nurse_badge_id: '',
+                emergency_justification: '',
+                request_code: 'REQ-' + Math.floor(Date.now() / 1000)
+            },
+
+            setPriority(p) {
+                this.formData.priority = p;
+                this.formData.request_type = p === 'STAT' ? 'TypeScreen' : 'CrossMatch';
+            },
+
+            async submitForm() {
+                this.loading = true;
+                this.formData.is_emergency = (this.formData.priority === 'STAT');
+
+                try {
+                    const res = await fetch('/api/orders/requests/', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'X-CSRFToken': '{{ csrf_token }}'
+                        },
+                        body: JSON.stringify(this.formData)
+                    });
+
+                    if (res.ok) {
+                        alert('Order created successfully!');
+                        window.location.href = '/orders/dashboard/'; // To be built
+                    } else {
+                        const err = await res.json();
+                        alert('Error: ' + JSON.stringify(err));
+                    }
+                } catch (e) {
+                    console.error(e);
+                    alert('Network error');
+                } finally {
+                    this.loading = false;
+                }
+            }
+        }
+    }
+</script>
+{% endblock %}

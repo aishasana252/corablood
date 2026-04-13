@@ -1,0 +1,132 @@
+{% extends "base.html" %}
+
+{% block title %}Donation Certificate Report - CoraBlood{% endblock %}
+
+{% block header %}Donation Certificate Report{% endblock %}
+
+{% block content %}
+<div class="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden min-h-[600px]">
+
+    <!-- Filter Section -->
+    <div class="p-6 border-b border-slate-100 bg-slate-50/30">
+        <h3 class="text-lg font-bold text-slate-900 mb-6">Donation Certificate Report</h3>
+
+        <div class="grid grid-cols-1 md:grid-cols-4 gap-6">
+            <!-- Donor Name -->
+            <div>
+                <label class="block text-xs font-semibold text-slate-500 uppercase tracking-wider mb-2">Donor
+                    Name</label>
+                <input type="text" placeholder="Donor Name"
+                    class="w-full px-4 py-2 rounded-lg bg-white border border-slate-200 text-slate-700 focus:border-brand-500 outline-none transition-all placeholder:text-slate-400">
+            </div>
+
+            <!-- Blood Nature -->
+            <div>
+                <label class="block text-xs font-semibold text-slate-500 uppercase tracking-wider mb-2">Blood
+                    Nature</label>
+                <select
+                    class="w-full px-4 py-2 rounded-lg bg-white border border-slate-200 text-slate-700 focus:border-brand-500 outline-none transition-all">
+                    <option value="All">All</option>
+                    <option value="Whole Blood">Whole Blood</option>
+                    <option value="Apheresis">Apheresis</option>
+                </select>
+            </div>
+
+            <!-- Donor ID -->
+            <div>
+                <label class="block text-xs font-semibold text-slate-500 uppercase tracking-wider mb-2">Donor ID</label>
+                <input type="text" placeholder="Donor ID"
+                    class="w-full px-4 py-2 rounded-lg bg-white border border-slate-200 text-slate-700 focus:border-brand-500 outline-none transition-all placeholder:text-slate-400">
+            </div>
+
+            <!-- Search Button (Optional alignment) -->
+            <div class="flex items-end">
+                <button
+                    class="px-6 py-2 bg-slate-800 text-white text-sm font-medium rounded-lg hover:bg-slate-900 transition-colors">
+                    Search
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Table Section -->
+    <div class="overflow-x-auto">
+        <table class="w-full text-left">
+            <thead class="bg-white border-b border-slate-100">
+                <tr>
+                    <th class="px-6 py-4 text-xs font-semibold text-slate-500 uppercase tracking-wider">Donor Name</th>
+                    <th class="px-6 py-4 text-xs font-semibold text-slate-500 uppercase tracking-wider">Donor ID</th>
+                    <th class="px-6 py-4 text-xs font-semibold text-slate-500 uppercase tracking-wider">Donation Code
+                    </th>
+                    <th class="px-6 py-4 text-xs font-semibold text-slate-500 uppercase tracking-wider">Donation Date
+                    </th>
+                    <th class="px-6 py-4 text-xs font-semibold text-slate-500 uppercase tracking-wider">Blood Group</th>
+                    <th class="px-6 py-4 text-xs font-semibold text-slate-500 uppercase tracking-wider">Blood Nature
+                    </th>
+                    <th class="px-6 py-4 text-xs font-semibold text-slate-500 uppercase tracking-wider">Status</th>
+                    <th class="px-6 py-4 text-xs font-semibold text-slate-500 uppercase tracking-wider text-right">
+                        Actions</th>
+                </tr>
+            </thead>
+            <tbody class="divide-y divide-slate-50">
+                {% for wf in workflows %}
+                <tr class="hover:bg-slate-50 transition-colors group">
+                    <td class="px-6 py-4 text-sm font-bold text-slate-700 uppercase">{{ wf.donor.full_name }}</td>
+                    <td class="px-6 py-4 text-sm text-slate-600 font-mono">{{ wf.donor.national_id }}</td>
+                    <td class="px-6 py-4 text-sm text-slate-600 font-mono">{{
+                        wf.blood_draw.bag_serial_number|default:"-" }}</td>
+
+                    <td class="px-6 py-4 text-sm text-slate-600">{{ wf.created_at|date:"d/m/Y" }}</td>
+
+                    <td class="px-6 py-4 text-sm text-slate-600 font-bold">{{ wf.donor.blood_group|default:"-" }}</td>
+
+                    <td class="px-6 py-4 text-sm text-slate-500 lowercase">{{ wf.blood_nature }}</td>
+
+                    <td class="px-6 py-4">
+                        <span
+                            class="px-2 py-1 bg-cyan-600 text-white text-[10px] uppercase font-bold rounded shadow-sm">
+                            {{ wf.cert_status }}
+                        </span>
+                    </td>
+
+                    <td class="px-6 py-4 text-right">
+                        <div class="flex items-center justify-end gap-2">
+                            <button
+                                class="px-3 py-1.5 bg-cyan-600 hover:bg-cyan-700 text-white text-xs font-medium rounded shadow-sm transition-colors">
+                                Print
+                            </button>
+                            <button
+                                class="px-3 py-1.5 bg-cyan-600 hover:bg-cyan-700 text-white text-xs font-medium rounded shadow-sm transition-colors opacity-90 hover:opacity-100">
+                                Mark as Completed
+                            </button>
+                        </div>
+                    </td>
+                </tr>
+                {% empty %}
+                <tr>
+                    <td colspan="8" class="px-6 py-12 text-center text-slate-400">
+                        No donations found for certificate generation.
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+
+    <!-- Pagination (Visual) -->
+    <div class="px-6 py-4 border-t border-slate-100 bg-slate-50 flex justify-end">
+        <div class="flex gap-1">
+            <button
+                class="w-8 h-8 flex items-center justify-center rounded bg-brand-600 text-white text-xs font-bold shadow-md shadow-brand-500/30">1</button>
+            <button
+                class="w-8 h-8 flex items-center justify-center rounded bg-white text-slate-600 text-xs hover:bg-slate-100 border border-slate-200">2</button>
+            <button
+                class="w-8 h-8 flex items-center justify-center rounded bg-white text-slate-600 text-xs hover:bg-slate-100 border border-slate-200">3</button>
+            <span class="w-8 h-8 flex items-center justify-center text-slate-400 text-xs">...</span>
+            <button
+                class="w-8 h-8 flex items-center justify-center rounded bg-white text-slate-600 text-xs hover:bg-slate-100 border border-slate-200">></button>
+        </div>
+    </div>
+
+</div>
+{% endblock %}

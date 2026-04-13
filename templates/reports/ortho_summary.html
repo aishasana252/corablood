@@ -1,0 +1,90 @@
+{% extends 'base.html' %}
+
+{% block title %}Ortho Report Summary | CoraBlood AI{% endblock %}
+{% block header %}Ortho Report Summary{% endblock %}
+
+{% block content %}
+<div class="space-y-6" x-data="{ expanded: true }">
+
+    <!-- Filters Section -->
+    <div class="bg-white rounded-lg border border-slate-200 shadow-sm p-6">
+        <h2 class="text-sm font-bold text-slate-800 mb-4 border-b border-slate-100 pb-2">Ortho Report Summary</h2>
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+            <!-- Start Date -->
+            <div class="flex items-center gap-4">
+                <label class="w-24 text-sm font-medium text-slate-700">start Date</label>
+                <input type="date" value="2026-01-04"
+                    class="flex-1 rounded border-slate-300 px-3 py-2 text-sm focus:ring-brand-500 focus:border-brand-500">
+            </div>
+
+            <!-- End Date -->
+            <div class="flex items-center gap-4">
+                <label class="w-24 text-sm font-medium text-slate-700">end Date</label>
+                <input type="date" value="2026-02-03"
+                    class="flex-1 rounded border-slate-300 px-3 py-2 text-sm focus:ring-brand-500 focus:border-brand-500">
+            </div>
+
+            <!-- Site -->
+            <div class="flex items-center gap-4">
+                <label class="w-24 text-sm font-medium text-slate-700">Site</label>
+                <select
+                    class="flex-1 rounded border-slate-300 px-3 py-2 text-sm focus:ring-brand-500 focus:border-brand-500">
+                    <option value="SMC1">الفرع الأول</option>
+                    <option value="SMC2">الفرع الثاني</option>
+                </select>
+            </div>
+        </div>
+    </div>
+
+    <!-- Summary Table -->
+    <div class="bg-white rounded-lg border border-slate-200 shadow-sm overflow-hidden">
+        <div class="p-4 border-b border-slate-100 bg-slate-50 flex justify-between items-center cursor-pointer"
+            @click="expanded = !expanded">
+            <h2 class="text-lg font-bold text-slate-800">Summary</h2>
+            <svg class="w-5 h-5 text-slate-500 transform transition-transform" :class="expanded ? 'rotate-180' : ''"
+                fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
+            </svg>
+        </div>
+
+        <div x-show="expanded" class="border-t border-slate-100 overflow-x-auto">
+            <table class="min-w-full divide-y divide-slate-100">
+                <thead class="bg-white">
+                    <tr>
+                        <th class="px-6 py-3 text-left text-xs font-bold text-slate-900 uppercase">CreatedDate</th>
+                        <th class="px-6 py-3 text-left text-xs font-bold text-slate-900 uppercase">ABO</th>
+                        <th class="px-6 py-3 text-left text-xs font-bold text-slate-900 uppercase">ABScr</th>
+                        <th class="px-6 py-3 text-left text-xs font-bold text-slate-900 uppercase">Dil Series</th>
+                        <th class="px-6 py-3 text-left text-xs font-bold text-slate-900 uppercase">Ident</th>
+                        <th class="px-6 py-3 text-left text-xs font-bold text-slate-900 uppercase">IgG</th>
+                        <th class="px-6 py-3 text-left text-xs font-bold text-slate-900 uppercase">Kell</th>
+                        <th class="px-6 py-3 text-left text-xs font-bold text-slate-900 uppercase">Pheno</th>
+                        <th class="px-6 py-3 text-left text-xs font-bold text-slate-900 uppercase">Poly</th>
+                        <th class="px-6 py-3 text-left text-xs font-bold text-slate-900 uppercase">Rh</th>
+                        <th class="px-6 py-3 text-left text-xs font-bold text-slate-900 uppercase">Weak D</th>
+                        <th class="px-6 py-3 text-left text-xs font-bold text-slate-900 uppercase">XM</th>
+                    </tr>
+                </thead>
+                <tbody class="divide-y divide-slate-50">
+                    {% for item in summary_data %}
+                    <tr class="hover:bg-slate-50">
+                        <td class="px-6 py-4 text-sm text-slate-700 whitespace-nowrap">{{ item.date }}</td>
+                        <td class="px-6 py-4 text-sm text-slate-700">{{ item.abo|default:"" }}</td>
+                        <td class="px-6 py-4 text-sm text-slate-700">{{ item.abscr|default:"" }}</td>
+                        <td class="px-6 py-4 text-sm text-slate-700">{{ item.dil_series|default:"" }}</td>
+                        <td class="px-6 py-4 text-sm text-slate-700">{{ item.ident|default:"" }}</td>
+                        <td class="px-6 py-4 text-sm text-slate-700">{{ item.igg|default:"" }}</td>
+                        <td class="px-6 py-4 text-sm text-slate-700">{{ item.kell|default:"" }}</td>
+                        <td class="px-6 py-4 text-sm text-slate-700">{{ item.pheno|default:"" }}</td>
+                        <td class="px-6 py-4 text-sm text-slate-700">{{ item.poly|default:"" }}</td>
+                        <td class="px-6 py-4 text-sm text-slate-700">{{ item.rh|default:"" }}</td>
+                        <td class="px-6 py-4 text-sm text-slate-700">{{ item.weak_d|default:"" }}</td>
+                        <td class="px-6 py-4 text-sm text-slate-700">{{ item.xm|default:"" }}</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+{% endblock %}

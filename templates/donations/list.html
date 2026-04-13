@@ -1,0 +1,260 @@
+{% extends 'base.html' %}
+
+{% block title %}Blood Donations | CoraBlood AI{% endblock %}
+{% block header %}
+<span x-text="lang === 'en' ? 'Blood Donations' : 'سجل التبرعات بالدم'"></span>
+{% endblock %}
+
+{% block content %}
+<div x-data="donationsList()" x-init="fetchDonations()" class="space-y-6">
+
+    <!-- Filters Grid -->
+    <div class="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm mb-6">
+        <h3 class="text-sm font-bold text-slate-800 mb-4 uppercase tracking-wide border-b border-slate-100 pb-2">
+            Donations Listing</h3>
+
+        <div class="grid grid-cols-1 md:grid-cols-4 gap-x-6 gap-y-4">
+            <!-- Row 1 -->
+            <div>
+                <label class="block text-xs font-semibold text-slate-500 mb-1">Code / كود التبرع</label>
+                <input type="text" placeholder="H107726000350"
+                    class="w-full px-3 py-2 text-sm border border-slate-200 rounded-lg focus:ring-1 focus:ring-brand-500 focus:border-brand-500 bg-slate-50 shadow-sm transition-all hover:bg-white">
+            </div>
+            <div>
+                <label class="block text-xs font-semibold text-slate-500 mb-1">Donor Name / اسم المتبرع</label>
+                <input x-model="search" @input.debounce.500ms="filterDonations()" type="text" placeholder="name"
+                    class="w-full px-3 py-2 text-sm border border-slate-200 rounded-lg focus:ring-1 focus:ring-brand-500 focus:border-brand-500 bg-slate-50 shadow-sm transition-all hover:bg-white">
+            </div>
+            <div>
+                <label class="block text-xs font-semibold text-slate-500 mb-1">Donation Date / تاريخ التبرع</label>
+                <input type="date"
+                    class="w-full px-3 py-2 text-sm border border-slate-200 rounded-lg focus:ring-1 focus:ring-brand-500 focus:border-brand-500 bg-slate-50 shadow-sm transition-all hover:bg-white">
+            </div>
+            <div class="relative">
+                <label class="block text-xs font-semibold text-slate-500 mb-1">Patient Name - المريض</label>
+                <div class="flex">
+                    <input type="text" disabled placeholder="-"
+                        class="w-full px-3 py-2 text-sm border border-slate-200 rounded-l-lg bg-slate-100 text-slate-400 cursor-not-allowed">
+                    <span
+                        class="inline-flex items-center px-3 rounded-r-lg border border-l-0 border-amber-200 bg-amber-100 text-amber-700 text-xs font-bold">
+                        -All-
+                    </span>
+                </div>
+            </div>
+
+            <!-- Row 2 -->
+            <div>
+                <label class="block text-xs font-semibold text-slate-500 mb-1">National ID/ID / رقم الهوية</label>
+                <input type="text" placeholder="National ID"
+                    class="w-full px-3 py-2 text-sm border border-slate-200 rounded-lg focus:ring-1 focus:ring-brand-500 focus:border-brand-500 bg-slate-50 shadow-sm transition-all hover:bg-white">
+            </div>
+            <div>
+                <label class="block text-xs font-semibold text-slate-500 mb-1">Donor Mobile / جوال المتبرع</label>
+                <input type="text" placeholder="Donor Mobile"
+                    class="w-full px-3 py-2 text-sm border border-slate-200 rounded-lg focus:ring-1 focus:ring-brand-500 focus:border-brand-500 bg-slate-50 shadow-sm transition-all hover:bg-white">
+            </div>
+            <div>
+                <label class="block text-xs font-semibold text-slate-500 mb-1">Status / حالة التبرع</label>
+                <select x-model="statusFilter" @change="filterDonations()"
+                    class="w-full px-3 py-2 text-sm border border-slate-200 rounded-lg focus:ring-1 focus:ring-brand-500 focus:border-brand-500 bg-slate-50 shadow-sm transition-all hover:bg-white appearance-none cursor-pointer">
+                    <option value="">All Statuses</option>
+                    <option value="Completed">WithDraw Blood Completed</option>
+                    <option value="Pending">Pending</option>
+                </select>
+            </div>
+            <div>
+                <label class="block text-xs font-semibold text-slate-500 mb-1">Site / موقع</label>
+                <select
+                    class="w-full px-3 py-2 text-sm border border-slate-200 rounded-lg focus:ring-1 focus:ring-brand-500 focus:border-brand-500 bg-slate-50 shadow-sm transition-all hover:bg-white appearance-none cursor-pointer">
+                    <option value="SMC1">الفرع الأول</option>
+                </select>
+            </div>
+        </div>
+
+        <!-- New Donation Button Positioned Absolutely or Flex End -->
+        <div class="mt-4 flex justify-end border-t border-slate-100 pt-4">
+            <a href="/donations/add"
+                class="inline-flex items-center px-4 py-2 border border-transparent text-sm font-bold rounded-lg shadow-sm text-white bg-blue-500 hover:bg-blue-600 focus:outline-none shadow-blue-500/30 transition-all">
+                + New Donation
+            </a>
+        </div>
+    </div>
+
+    <!-- Table Card -->
+    <div class="glass-panel overflow-hidden rounded-2xl shadow-sm border border-slate-200/60">
+        <div class="overflow-x-auto">
+            <table class="min-w-full divide-y divide-slate-200">
+                <thead class="bg-slate-50/50">
+                    <tr>
+                        <th scope="col"
+                            class="px-6 py-4 text-left text-[11px] font-bold text-slate-500 uppercase tracking-wider">#
+                        </th>
+                        <th scope="col"
+                            class="px-6 py-4 text-left text-[11px] font-bold text-slate-500 uppercase tracking-wider">
+                            Name</th>
+                        <th scope="col"
+                            class="px-6 py-4 text-left text-[11px] font-bold text-slate-500 uppercase tracking-wider">
+                            Blood Nature</th>
+                        <th scope="col"
+                            class="px-6 py-4 text-left text-[11px] font-bold text-slate-500 uppercase tracking-wider">
+                            Blood Type</th>
+                        <th scope="col"
+                            class="px-6 py-4 text-left text-[11px] font-bold text-slate-500 uppercase tracking-wider">
+                            National ID</th>
+                        <th scope="col"
+                            class="px-6 py-4 text-left text-[11px] font-bold text-slate-500 uppercase tracking-wider">
+                            Phone</th>
+                        <th scope="col"
+                            class="px-6 py-4 text-left text-[11px] font-bold text-slate-500 uppercase tracking-wider">
+                            Patient</th>
+                        <th scope="col"
+                            class="px-6 py-4 text-left text-[11px] font-bold text-slate-500 uppercase tracking-wider">
+                            Site</th>
+                        <th scope="col"
+                            class="px-6 py-4 text-left text-[11px] font-bold text-slate-500 uppercase tracking-wider">
+                            Status</th>
+                        <th scope="col"
+                            class="px-6 py-4 text-left text-[11px] font-bold text-slate-500 uppercase tracking-wider">
+                            Date</th>
+                        <th scope="col"
+                            class="px-6 py-4 text-right text-[11px] font-bold text-slate-500 uppercase tracking-wider">
+                            Actions</th>
+                    </tr>
+                </thead>
+                <tbody class="bg-white divide-y divide-slate-100">
+                    <template x-if="loading">
+                        <tr>
+                            <td colspan="11" class="px-6 py-12 text-center text-slate-400 animate-pulse">Loading
+                                donations...</td>
+                        </tr>
+                    </template>
+
+                    <template x-if="!loading && filteredDonations.length === 0">
+                        <tr>
+                            <td colspan="11" class="px-6 py-12 text-center text-slate-400">No donations found.</td>
+                        </tr>
+                    </template>
+
+                    <template x-for="item in filteredDonations" :key="item.id">
+                        <tr class="hover:bg-blue-50/30 transition-colors group">
+                            <td class="px-6 py-4 whitespace-nowrap text-xs text-slate-500 font-mono"
+                                x-html="item.donation_code || 'H107726000360'"></td>
+                            <td class="px-6 py-4 whitespace-nowrap text-xs font-bold text-slate-700 uppercase"
+                                x-text="item.donor_details ? item.donor_details.full_name : 'HAMAD FARIS ALFARIS'"></td>
+
+                            <td class="px-6 py-4 whitespace-nowrap text-xs text-slate-600">
+                                <span x-text="item.components_summary || 'Whole Blood'"></span>
+                            </td>
+
+                            <td class="px-6 py-4 whitespace-nowrap text-xs font-bold text-slate-700">
+                                <span class="bg-slate-100 text-slate-700 px-1.5 py-0.5 rounded border border-slate-200"
+                                    x-text="item.donor_details?.blood_group || 'B+'"></span>
+                            </td>
+
+                            <td class="px-6 py-4 whitespace-nowrap text-xs text-slate-500 font-mono"
+                                x-text="item.donor_details?.national_id || '1131077487'"></td>
+                            <td class="px-6 py-4 whitespace-nowrap text-xs text-slate-500 font-mono"
+                                x-text="item.donor_details?.mobile || '0537222515'"></td>
+
+                            <td class="px-6 py-4 whitespace-nowrap text-xs text-slate-400 italic">
+                                -
+                            </td>
+
+                            <td class="px-6 py-4 whitespace-nowrap text-xs text-slate-600">
+                                الفرع الأول
+                            </td>
+
+                            <td class="px-6 py-4 whitespace-nowrap">
+                                <span
+                                    class="bg-slate-100 text-slate-500 text-[10px] px-2 py-1 rounded-sm border border-slate-200">
+                                    WithDraw Blood Completed
+                                </span>
+                            </td>
+
+                            <td class="px-6 py-4 whitespace-nowrap text-[10px] text-slate-400">
+                                <div class="flex flex-col">
+                                    <span>DoneBy: Nouf Shawqi Qasem</span>
+                                    <span x-text="'Date: ' + formatDate(item.donation_date)"></span>
+                                </div>
+                            </td>
+
+                            <td class="px-6 py-4 whitespace-nowrap text-right text-xs font-medium">
+                                <button
+                                    class="text-white bg-cyan-400 hover:bg-cyan-500 px-3 py-1 rounded shadow-sm transition-colors text-xs">
+                                    Actions
+                                </button>
+                            </td>
+                        </tr>
+                    </template>
+                </tbody>
+            </table>
+        </div>
+
+        <!-- Pagination -->
+        <div class="bg-white px-4 py-3 border-t border-slate-200 sm:px-6 flex items-center justify-between">
+            <div class="text-sm text-slate-500">
+                <span x-text="filteredDonations.length"></span> records
+            </div>
+            <div class="flex gap-2">
+                <button
+                    class="px-4 py-2 border border-slate-200 text-sm font-medium rounded-lg text-slate-600 hover:bg-slate-50 transition-colors">Previous</button>
+                <button
+                    class="px-4 py-2 border border-slate-200 text-sm font-medium rounded-lg text-slate-600 hover:bg-slate-50 transition-colors">Next</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+    function donationsList() {
+        return {
+            donations: [],
+            filteredDonations: [],
+            loading: true,
+            search: '',
+            statusFilter: '',
+
+            async fetchDonations() {
+                this.loading = true;
+                try {
+                    const res = await fetch('/api/donations/');
+                    if (!res.ok) throw new Error('Failed to fetch donations');
+
+                    const data = await res.json();
+                    // Handle pagination if present
+                    this.donations = data.results ? data.results : data;
+
+                    this.filterDonations();
+                } catch (e) {
+                    console.error(e);
+                    // alert('Failed to load donations'); // Optional: don't alert clearly to avoid annoyance
+                } finally {
+                    this.loading = false;
+                }
+            },
+
+            filterDonations() {
+                this.filteredDonations = this.donations.filter(item => {
+                    const searchLower = this.search.toLowerCase();
+                    const searchMatch = !this.search ||
+                        (item.donation_code && item.donation_code.toLowerCase().includes(searchLower)) ||
+                        (item.donor_details && item.donor_details.full_name.toLowerCase().includes(searchLower));
+
+                    const statusMatch = this.statusFilter === '' ||
+                        (this.statusFilter === 'Completed' && ['COMPLETED', 'LABS'].includes(item.status)) ||
+                        (this.statusFilter === 'Pending' && !['COMPLETED', 'LABS'].includes(item.status));
+
+                    return searchMatch && statusMatch;
+                });
+            },
+
+            formatDate(dateString) {
+                if (!dateString) return '-';
+                return new Date(dateString).toLocaleDateString('en-GB', {
+                    year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit'
+                }).replace(',', '');
+            }
+        }
+    }
+</script>
+{% endblock %}

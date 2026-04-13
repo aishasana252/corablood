@@ -1,0 +1,135 @@
+{% extends 'base.html' %}
+
+{% block title %}Issue Requests | CoraBlood AI{% endblock %}
+{% block header %}
+<span x-text="lang === 'en' ? 'Issue Requests' : 'طلبات الصرف الطارئ'"></span>
+{% endblock %}
+
+{% block content %}
+<div class="space-y-6">
+
+    <!-- Filters Section -->
+    <div class="bg-white rounded-lg border border-slate-200 p-6 shadow-sm">
+        <div class="grid grid-cols-1 md:grid-cols-4 gap-6 items-end">
+            <div class="space-y-1">
+                <label class="block text-xs font-bold text-slate-700">Code</label>
+                <input type="text" placeholder="Code"
+                    class="w-full rounded border-slate-300 text-sm px-3 py-2 focus:ring-brand-500 focus:border-brand-500">
+            </div>
+            <div class="space-y-1">
+                <label class="block text-xs font-bold text-slate-700">MRN</label>
+                <input type="text" placeholder="MRN"
+                    class="w-full rounded border-slate-300 text-sm px-3 py-2 focus:ring-brand-500 focus:border-brand-500">
+            </div>
+            <div class="space-y-1">
+                <label class="block text-xs font-bold text-slate-700">Site</label>
+                <select
+                    class="w-full rounded border-slate-300 text-sm px-3 py-2 focus:ring-brand-500 focus:border-brand-500">
+                    <option value="SMC1">الفرع الأول</option>
+                </select>
+            </div>
+            <div class="space-y-1">
+                <label class="block text-xs font-bold text-slate-700">Donation Code</label>
+                <input type="text" placeholder="Donation Code"
+                    class="w-full rounded border-slate-300 text-sm px-3 py-2 focus:ring-brand-500 focus:border-brand-500">
+            </div>
+        </div>
+
+        <!-- Action Buttons (Hidden in screenshot but implied for functionality, or maybe just filters) -->
+        <!-- Adding a "Create New" button for user navigation -->
+        <div class="mt-4 flex justify-end">
+            <a href="{% url 'emergency_issue_create' %}"
+                class="bg-brand-600 hover:bg-brand-700 text-white text-sm font-bold py-2 px-4 rounded shadow-sm transition-colors flex items-center gap-2">
+                <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
+                </svg>
+                New Request
+            </a>
+        </div>
+    </div>
+
+    <!-- Table Section -->
+    <div class="bg-white rounded-lg border border-slate-200 shadow-sm overflow-hidden">
+        <div class="overflow-x-auto">
+            <table class="min-w-full divide-y divide-slate-200">
+                <thead class="bg-slate-50">
+                    <tr>
+                        <th class="px-6 py-3 text-left text-xs font-bold text-slate-900 uppercase tracking-wider">
+                            Req.Code.#</th>
+                        <th class="px-6 py-3 text-left text-xs font-bold text-slate-900 uppercase tracking-wider">
+                            VisualInspection</th>
+                        <th class="px-6 py-3 text-left text-xs font-bold text-slate-900 uppercase tracking-wider">
+                            LabelChecked</th>
+                        <th class="px-6 py-3 text-left text-xs font-bold text-slate-900 uppercase tracking-wider">
+                            NurseName</th>
+                        <th class="px-6 py-3 text-left text-xs font-bold text-slate-900 uppercase tracking-wider">
+                            NurseID</th>
+                        <th class="px-6 py-3 text-left text-xs font-bold text-slate-900 uppercase tracking-wider">
+                            Patient MRN</th>
+                        <th class="px-6 py-3 text-left text-xs font-bold text-slate-900 uppercase tracking-wider">
+                            Patient Name</th>
+                        <th class="px-6 py-3 text-left text-xs font-bold text-slate-900 uppercase tracking-wider">Date
+                        </th>
+                        <th class="px-6 py-3 text-right text-xs font-bold text-slate-900 uppercase tracking-wider">
+                            Actions</th>
+                    </tr>
+                </thead>
+                <tbody class="bg-white divide-y divide-slate-200">
+                    {% for req in requests %}
+                    <tr class="hover:bg-slate-50 transition-colors">
+                        <td class="px-6 py-4 text-xs font-bold text-slate-900">{{ req.req_code }}</td>
+                        <td class="px-6 py-4 text-xs text-emerald-600">
+                            {% if req.visual_inspection %}
+                            <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                    d="M5 13l4 4L19 7" />
+                            </svg>
+                            {% endif %}
+                        </td>
+                        <td class="px-6 py-4 text-xs text-emerald-600">
+                            {% if req.label_checked %}
+                            <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                    d="M5 13l4 4L19 7" />
+                            </svg>
+                            {% endif %}
+                        </td>
+                        <td class="px-6 py-4 text-xs font-medium text-slate-600 uppercase">{{ req.nurse_name }}</td>
+                        <td class="px-6 py-4 text-xs text-slate-600">{{ req.nurse_id }}</td>
+                        <td class="px-6 py-4 text-xs text-slate-600">{{ req.patient_mrn }}</td>
+                        <td class="px-6 py-4 text-xs text-slate-600 font-medium">{{ req.patient_name }}</td>
+                        <td class="px-6 py-4 text-[10px] text-slate-500">
+                            <div class="font-medium text-slate-700">DoneBy: {{ req.date_by_name}}</div>
+                            <div>DoneDate: {{ req.date_time }}</div>
+                        </td>
+                        <td class="px-6 py-4 text-right">
+                            <button
+                                class="bg-[#2D89C8] hover:bg-[#2070a8] text-white text-xs font-medium px-3 py-1.5 rounded shadow-sm transition-colors">
+                                Issue Details
+                            </button>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+
+        <!-- Pagination Mockup -->
+        <div class="bg-slate-50 px-6 py-3 border-t border-slate-200 flex items-center justify-center">
+            <div class="text-xs text-slate-500 font-medium flex items-center gap-2">
+                <span class="cursor-pointer hover:text-slate-700">« Previous</span>
+                <span
+                    class="bg-blue-500 text-white w-6 h-6 flex items-center justify-center rounded text-[10px]">1</span>
+                <span
+                    class="hover:bg-slate-200 w-6 h-6 flex items-center justify-center rounded text-[10px] cursor-pointer">2</span>
+                <span
+                    class="hover:bg-slate-200 w-6 h-6 flex items-center justify-center rounded text-[10px] cursor-pointer">3</span>
+                <span>...</span>
+                <span
+                    class="hover:bg-slate-200 w-6 h-6 flex items-center justify-center rounded text-[10px] cursor-pointer">10</span>
+                <span class="cursor-pointer hover:text-slate-700">Next »</span>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

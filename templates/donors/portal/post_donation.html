@@ -1,0 +1,78 @@
+{% extends 'donors/portal/base.html' %}
+{% load static %}
+
+{% block dashboard_content %}
+<div class="max-w-2xl mx-auto py-8 px-4 text-center">
+    <div class="mb-12">
+        <div class="w-20 h-20 bg-emerald-100 text-emerald-600 rounded-full flex items-center justify-center mx-auto mb-6">
+            <svg class="w-10 h-10" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+        </div>
+        <h1 class="text-3xl font-display font-bold text-slate-800">Donation Complete!</h1>
+        <p class="text-slate-500 mt-2">You absolute hero. Your contribution will save lives today. Please help us improve by sharing your feedback.</p>
+    </div>
+
+    <form method="POST" class="space-y-8 text-left bg-white p-8 rounded-3xl shadow-xl shadow-slate-200/50 border border-slate-100">
+        {% csrf_token %}
+        
+        <div class="space-y-8">
+            <!-- Question 1 -->
+            <div>
+                <label class="block text-sm font-bold text-slate-700 mb-4">How comfortable was the donation process?</label>
+                <div class="flex justify-between items-center gap-2">
+                    {% for i in "12345" %}
+                    <label class="flex-1 text-center group cursor-pointer">
+                        <input type="radio" name="comfort" value="{{ i }}" {% if i == "5" %}checked{% endif %} class="hidden peer">
+                        <div class="py-3 rounded-xl border border-slate-100 bg-slate-50 text-slate-400 group-hover:bg-slate-100 peer-checked:bg-brand-50 peer-checked:border-brand-500 peer-checked:text-brand-600 peer-checked:shadow-sm transition-all">
+                            <span class="text-lg font-bold">{{ i }}</span>
+                        </div>
+                    </label>
+                    {% endfor %}
+                </div>
+                <div class="flex justify-between mt-2 px-1">
+                    <span class="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Poor</span>
+                    <span class="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Excellent</span>
+                </div>
+            </div>
+
+            <!-- Question 2 -->
+            <div>
+                <label class="block text-sm font-bold text-slate-700 mb-4">How was your interaction with our team?</label>
+                <div class="flex justify-between items-center gap-2">
+                    {% for i in "12345" %}
+                    <label class="flex-1 text-center group cursor-pointer">
+                        <input type="radio" name="staff" value="{{ i }}" {% if i == "5" %}checked{% endif %} class="hidden peer">
+                        <div class="py-3 rounded-xl border border-slate-100 bg-slate-50 text-slate-400 group-hover:bg-slate-100 peer-checked:bg-brand-50 peer-checked:border-brand-500 peer-checked:text-brand-600 peer-checked:shadow-sm transition-all">
+                            <span class="text-lg font-bold">{{ i }}</span>
+                        </div>
+                    </label>
+                    {% endfor %}
+                </div>
+            </div>
+
+            <!-- Question 3 -->
+            <div>
+                <label class="block text-sm font-bold text-slate-700 mb-4">Were you satisfied with the wait time?</label>
+                <div class="flex justify-between items-center gap-2">
+                    {% for i in "12345" %}
+                    <label class="flex-1 text-center group cursor-pointer">
+                        <input type="radio" name="wait" value="{{ i }}" {% if i == "5" %}checked{% endif %} class="hidden peer">
+                        <div class="py-3 rounded-xl border border-slate-100 bg-slate-50 text-slate-400 group-hover:bg-slate-100 peer-checked:bg-brand-50 peer-checked:border-brand-500 peer-checked:text-brand-600 peer-checked:shadow-sm transition-all">
+                            <span class="text-lg font-bold">{{ i }}</span>
+                        </div>
+                    </label>
+                    {% endfor %}
+                </div>
+            </div>
+
+            <div class="pt-4 border-t border-slate-100">
+                <label class="block text-sm font-bold text-slate-700 mb-2">Any other comments or suggestions?</label>
+                <textarea name="comments" rows="3" class="w-full rounded-2xl border-slate-200 focus:border-brand-500 focus:ring-brand-500 p-4" placeholder="Optional..."></textarea>
+            </div>
+        </div>
+
+        <button type="submit" class="w-full py-4 bg-emerald-500 text-white rounded-2xl font-bold shadow-lg shadow-emerald-200 hover:bg-emerald-600 hover:-translate-y-0.5 transition-all mt-4">
+            Submit Feedback & Finish
+        </button>
+    </form>
+</div>
+{% endblock %}

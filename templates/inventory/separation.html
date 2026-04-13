@@ -1,0 +1,147 @@
+{% extends 'base.html' %}
+
+{% block title %}Component Separation | CoraBlood AI{% endblock %}
+{% block header %}
+<span x-text="lang === 'en' ? 'Component Separation' : 'فصل مكونات الدم'"></span>
+{% endblock %}
+
+{% block content %}
+<div class="space-y-6" x-data="separationDashboard()">
+
+    <!-- Stats Overview -->
+    <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+        <div class="bg-indigo-50 p-6 rounded-2xl border border-indigo-100 flex items-center gap-4">
+            <div
+                class="w-12 h-12 bg-indigo-100 rounded-xl flex items-center justify-center text-indigo-600 font-bold text-xl">
+                <span x-text="items.length"></span>
+            </div>
+            <div>
+                <h3 class="font-bold text-indigo-900" x-text="lang === 'en' ? 'Pending Separation' : 'بانتظار الفصل'">
+                </h3>
+                <p class="text-xs text-indigo-600">Whole Blood Units</p>
+            </div>
+        </div>
+    </div>
+
+    <!-- Data Grid -->
+    <div class="bg-white rounded-[2rem] shadow-sm border border-slate-100 overflow-hidden">
+        <div class="p-6 border-b border-slate-100 flex justify-between items-center bg-slate-50/50">
+            <h3 class="font-bold text-slate-800"
+                x-text="lang === 'en' ? 'Units Ready for Processing' : 'وحدات جاهزة للمعالجة'"></h3>
+            <button @click="fetchItems" class="text-slate-400 hover:text-brand-500 transition-colors">
+                <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                        d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                </svg>
+            </button>
+        </div>
+
+        <table class="w-full text-left">
+            <thead class="bg-slate-50 border-b border-slate-100">
+                <tr>
+                    <th class="px-6 py-4 text-xs font-bold text-slate-400 uppercase tracking-wider">Unit #</th>
+                    <th class="px-6 py-4 text-xs font-bold text-slate-400 uppercase tracking-wider">Type</th>
+                    <th class="px-6 py-4 text-xs font-bold text-slate-400 uppercase tracking-wider">Blood Group</th>
+                    <th class="px-6 py-4 text-xs font-bold text-slate-400 uppercase tracking-wider">Collection Time</th>
+                    <th class="px-6 py-4 text-xs font-bold text-slate-400 uppercase tracking-wider">Action</th>
+                </tr>
+            </thead>
+            <tbody class="divide-y divide-slate-100">
+                <template x-for="item in items" :key="item.id">
+                    <tr class="hover:bg-slate-50/50 transition-colors group">
+                        <td class="px-6 py-4 font-mono font-bold text-slate-700" x-text="item.donation_code"></td>
+                        <td class="px-6 py-4">
+                            <span class="px-2 py-1 bg-slate-100 rounded text-xs font-medium text-slate-600"
+                                x-text="item.blood_nature"></span>
+                        </td>
+                        <td class="px-6 py-4 font-bold text-rose-600" x-text="item.donor_blood_group || '?'"></td>
+                        <td class="px-6 py-4 text-sm text-slate-500"
+                            x-text="new Date(item.donation_date).toLocaleTimeString()"></td>
+                        <td class="px-6 py-4">
+                            <button @click="separate(item)" :disabled="processing === item.id"
+                                class="flex items-center gap-2 px-4 py-2 bg-slate-900 text-white rounded-xl text-xs font-bold hover:bg-brand-600 transition-all shadow-lg shadow-slate-200 disabled:opacity-50">
+                                <svg x-show="processing === item.id" class="animate-spin w-4 h-4" fill="none"
+                                    viewBox="0 0 24 24">
+                                    <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor"
+                                        stroke-width="4"></circle>
+                                    <path class="opacity-75" fill="currentColor"
+                                        d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z">
+                                    </path>
+                                </svg>
+                                <span x-text="lang === 'en' ? 'Separate' : 'فصل المكونات'"></span>
+                            </button>
+                        </td>
+                    </tr>
+                </template>
+                <tr x-show="items.length === 0">
+                    <td colspan="5" class="px-6 py-12 text-center text-slate-400">
+                        No units waiting for separation.
+                    </td>
+                </tr>
+            </tbody>
+        </table>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    function separationDashboard() {
+        return {
+            items: [],
+            processing: null,
+            lang: localStorage.getItem('cora_lang') || 'en',
+
+            async init() {
+                await this.fetchItems();
+            },
+
+            async fetchItems() {
+                // Fetch donors in LABS state (ready for separation/testing)
+                try {
+                    const res = await fetch('/api/workflow/queue/?step=LABS');
+                    if (!res.ok) throw new Error('Failed to fetch');
+                    const data = await res.json();
+                    // Client-side filter: only relevant blood natures if needed
+                    this.items = data;
+                } catch (e) {
+                    console.error("Error fetching items:", e);
+                }
+            },
+
+            async separate(item) {
+                this.processing = item.id;
+                try {
+                    // Correct API endpoint for separation
+                    const res = await fetch(`/api/donations/${item.id}/separate_components/`, {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'X-CSRFToken': '{{ csrf_token }}'
+                        },
+                        body: JSON.stringify({
+                            // Default components for Whole Blood
+                            components: [
+                                { 'type': 'PRBC', 'volume': 300 },
+                                { 'type': 'FFP', 'volume': 200 },
+                                { 'type': 'PLT', 'volume': 50 }
+                            ]
+                        })
+                    });
+
+                    if (res.ok) {
+                        this.items = this.items.filter(i => i.id !== item.id);
+                        // Optional: Show toast
+                    } else {
+                        console.error('Separation failed');
+                    }
+                } catch (e) {
+                    console.error(e);
+                } finally {
+                    this.processing = null;
+                }
+            }
+        }
+    }
+</script>
+{% endblock %}

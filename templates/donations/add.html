@@ -1,0 +1,327 @@
+{% extends 'base.html' %}
+
+{% block title %}Record Donation | CoraBlood AI{% endblock %}
+{% block header %}
+<span x-text="lang === 'en' ? 'Record New Donation' : 'تسجيل تبرع جديد'"></span>
+{% endblock %}
+
+{% block content %}
+<div class="max-w-5xl mx-auto relative" x-data="donationForm()">
+
+    <!-- Background Decor -->
+    <div
+        class="absolute top-0 right-0 -mr-32 -mt-32 w-96 h-96 bg-red-400/20 rounded-full blur-3xl pointer-events-none animate-pulse">
+    </div>
+    <div class="absolute bottom-0 left-0 -ml-32 -mb-32 w-96 h-96 bg-amber-400/20 rounded-full blur-3xl pointer-events-none animate-pulse"
+        style="animation-duration: 4s;"></div>
+
+    <div class="relative z-10">
+        <!-- Header & Language Switcher -->
+        <div class="flex flex-col-reverse sm:flex-row justify-between items-center mb-8 gap-4">
+            <div
+                class="flex items-center gap-3 bg-white/60 backdrop-blur-md px-4 py-2 rounded-2xl border border-white/50 shadow-sm">
+                <div class="h-2 w-2 rounded-full bg-blue-500 animate-pulse"></div>
+                <span class="text-sm font-medium text-slate-600"
+                    x-text="lang === 'en' ? 'Lab Connected' : 'المختبر متصل'"></span>
+            </div>
+
+            <div class="bg-slate-900/5 p-1.5 rounded-2xl flex relative overflow-hidden backdrop-blur-sm">
+                <div class="absolute inset-y-1.5 w-[50%] bg-white shadow-sm rounded-xl transition-all duration-300 ease-out"
+                    :class="lang === 'en' ? 'left-1.5' : 'left-[calc(50%-0.375rem)]'"></div>
+                <button @click="setLang('en')"
+                    class="relative z-10 w-24 py-2 text-sm font-bold rounded-xl transition-colors duration-300"
+                    :class="lang === 'en' ? 'text-slate-900' : 'text-slate-500 hover:text-slate-700'">English</button>
+                <button @click="setLang('ar')"
+                    class="relative z-10 w-24 py-2 text-sm font-bold rounded-xl transition-colors duration-300"
+                    :class="lang === 'ar' ? 'text-slate-900' : 'text-slate-500 hover:text-slate-700'">العربية</button>
+            </div>
+        </div>
+
+        <!-- Success Message -->
+        <div x-show="success" x-transition
+            class="mb-8 p-6 rounded-2xl bg-gradient-to-r from-green-50 to-emerald-50 border border-green-100 flex items-center gap-4 text-green-800 shadow-lg shadow-green-500/10">
+            <div class="p-2 bg-green-100 rounded-full"><svg class="w-6 h-6 text-green-600" fill="none"
+                    viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                        d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                </svg></div>
+            <div>
+                <h4 class="font-bold text-lg" x-text="lang === 'en' ? 'Donation Recorded!' : 'تم تسجيل التبرع!'"></h4>
+                <p
+                    x-text="lang === 'en' ? 'Unit has been labeled and added to inventory.' : 'تم إصدار ملصق الوحدة وإضافتها للمخزون.'">
+                </p>
+            </div>
+        </div>
+
+        <form @submit.prevent="submitForm"
+            class="bg-white/80 backdrop-blur-xl rounded-[2rem] shadow-2xl shadow-slate-200/50 border border-white/50 p-8 sm:p-12 space-y-12 overflow-hidden relative"
+            :dir="lang === 'ar' ? 'rtl' : 'ltr'">
+
+            <!-- Step 1: Donor Selection -->
+            <div class="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-700">
+                <div class="flex items-center gap-4 border-b border-slate-100 pb-4">
+                    <div
+                        class="w-12 h-12 rounded-2xl bg-gradient-to-br from-indigo-50 to-indigo-100 text-indigo-600 flex items-center justify-center shadow-inner">
+                        <svg class="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" />
+                        </svg>
+                    </div>
+                    <div>
+                        <h3 class="text-xl font-display font-bold text-slate-900" x-text="t('donor_selection')"></h3>
+                        <p class="text-sm text-slate-500"
+                            x-text="lang === 'en' ? 'Identify the donor' : 'تحديد هوية المتبرع'"></p>
+                    </div>
+                </div>
+
+                <div class="group relative">
+                    <label
+                        class="block text-xs font-bold text-slate-400 uppercase tracking-wider mb-2 transition-colors group-focus-within:text-brand-500">
+                        <span x-text="t('select_donor')"></span>
+                    </label>
+                    <select x-model="formData.donor" required
+                        class="block w-full px-5 py-4 bg-slate-50 border-0 rounded-2xl text-slate-900 shadow-inner ring-1 ring-slate-200 focus:ring-2 focus:ring-brand-500 focus:bg-white transition-all font-medium appearance-none">
+                        <option value="" x-text="t('choose_donor')"></option>
+                        <template x-for="donor in donors" :key="donor.id">
+                            <option :value="donor.id" x-text="donor.full_name + ' (' + donor.national_id + ')'">
+                            </option>
+                        </template>
+                    </select>
+                    <!-- Spinner if loading donors -->
+                    <div x-show="loadingDonors" class="absolute right-4 top-10 rtl:right-auto rtl:left-4">
+                        <svg class="animate-spin h-5 w-5 text-brand-500" fill="none" viewBox="0 0 24 24">
+                            <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4">
+                            </circle>
+                            <path class="opacity-75" fill="currentColor"
+                                d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z">
+                            </path>
+                        </svg>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Step 2: Vital Signs & Withdrawal Details -->
+            <div class="space-y-8 animate-in fade-in slide-in-from-bottom-8 duration-1000">
+                <div class="flex items-center gap-4 border-b border-slate-100 pb-4">
+                    <div
+                        class="w-12 h-12 rounded-2xl bg-gradient-to-br from-rose-50 to-rose-100 text-rose-600 flex items-center justify-center shadow-inner">
+                        <svg class="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z" />
+                        </svg>
+                    </div>
+                    <div>
+                        <h3 class="text-xl font-display font-bold text-slate-900" x-text="t('donation_details')"></h3>
+                        <p class="text-sm text-slate-500"
+                            x-text="lang === 'en' ? 'Vitals & Withdrawal Info' : 'العلامات الحيوية وتفاصيل السحب'"></p>
+                    </div>
+                </div>
+
+                <!-- Vitals Grid -->
+                <div class="grid grid-cols-2 md:grid-cols-4 gap-6 bg-slate-50 p-6 rounded-2xl border border-slate-100">
+                    <div>
+                        <label class="block text-xs font-bold text-slate-400 uppercase mb-1">HB (g/dL)</label>
+                        <input type="number" step="0.1" x-model="formData.hemoglobin"
+                            class="w-full text-center font-mono font-bold rounded-xl border-slate-200 focus:ring-brand-500">
+                    </div>
+                    <div>
+                        <label class="block text-xs font-bold text-slate-400 uppercase mb-1">Temp (C)</label>
+                        <input type="number" step="0.1" x-model="formData.temperature"
+                            class="w-full text-center font-mono font-bold rounded-xl border-slate-200 focus:ring-brand-500">
+                    </div>
+                    <div>
+                        <label class="block text-xs font-bold text-slate-400 uppercase mb-1">BP (Sys/Dia)</label>
+                        <div class="flex gap-2">
+                            <input type="number" x-model="formData.bp_systolic" placeholder="120"
+                                class="w-full text-center font-mono font-bold rounded-xl border-slate-200 focus:ring-brand-500">
+                            <input type="number" x-model="formData.bp_diastolic" placeholder="80"
+                                class="w-full text-center font-mono font-bold rounded-xl border-slate-200 focus:ring-brand-500">
+                        </div>
+                    </div>
+                    <div>
+                        <label class="block text-xs font-bold text-slate-400 uppercase mb-1">Pulse (bpm)</label>
+                        <input type="number" x-model="formData.pulse"
+                            class="w-full text-center font-mono font-bold rounded-xl border-slate-200 focus:ring-brand-500">
+                    </div>
+                </div>
+
+                <!-- Withdrawal Details -->
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-8">
+                    <!-- Arm Selection -->
+                    <div class="group relative">
+                        <label
+                            class="block text-xs font-bold text-slate-400 uppercase tracking-wider mb-2 transition-colors group-focus-within:text-brand-500">
+                            <span x-text="lang === 'en' ? 'Arm Checked' : 'الفحص البصري للذراع'"></span>
+                        </label>
+                        <select x-model="formData.arm" required
+                            class="block w-full px-5 py-4 bg-slate-50 border-0 rounded-2xl text-slate-900 shadow-inner ring-1 ring-slate-200 focus:ring-2 focus:ring-brand-500 focus:bg-white transition-all font-medium appearance-none">
+                            <option value="Right">Right Arm (الذراع الأيمن)</option>
+                            <option value="Left">Left Arm (الذراع الأيسر)</option>
+                        </select>
+                    </div>
+
+                    <!-- Quantity -->
+                    <div class="group relative">
+                        <label
+                            class="block text-xs font-bold text-slate-400 uppercase tracking-wider mb-2 transition-colors group-focus-within:text-brand-500">
+                            <span x-text="t('quantity')"></span>
+                        </label>
+                        <div class="relative">
+                            <input type="number" x-model="formData.quantity_ml" required
+                                class="block w-full px-5 py-4 bg-slate-50 border-0 rounded-2xl text-slate-900 shadow-inner ring-1 ring-slate-200 focus:ring-2 focus:ring-brand-500 focus:bg-white transition-all font-medium"
+                                placeholder="450">
+                            <div
+                                class="absolute inset-y-0 right-0 pr-5 flex items-center pointer-events-none rtl:right-auto rtl:left-0 rtl:pl-5 rtl:pr-0">
+                                <span class="text-slate-400 font-bold">ml</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Safety Checks -->
+                    <div
+                        class="md:col-span-2 flex flex-col sm:flex-row gap-6 bg-blue-50/50 p-4 rounded-xl border border-blue-100">
+                        <label class="inline-flex items-center gap-3 cursor-pointer">
+                            <input type="checkbox" x-model="formData.iqama_checked"
+                                class="w-5 h-5 rounded text-brand-600 focus:ring-brand-500 border-slate-300">
+                            <span class="font-medium text-slate-700"
+                                x-text="lang === 'en' ? 'I confirm ID/Iqama Check' : 'أؤكد التحقق من الهوية'"></span>
+                        </label>
+                        <label class="inline-flex items-center gap-3 cursor-pointer">
+                            <input type="checkbox" x-model="formData.bag_visual_inspection"
+                                class="w-5 h-5 rounded text-brand-600 focus:ring-brand-500 border-slate-300">
+                            <span class="font-medium text-slate-700"
+                                x-text="lang === 'en' ? 'Bag Visual Inspection OK' : 'فحص كيس الدم سليم'"></span>
+                        </label>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Actions -->
+            <div
+                class="flex items-center justify-between pt-8 border-t border-slate-100 animate-in fade-in slide-in-from-bottom-12 duration-1000">
+                <button type="button" @click="window.history.back()"
+                    class="px-6 py-3 rounded-2xl text-slate-500 font-bold hover:bg-slate-50 hover:text-slate-800 transition-colors"
+                    x-text="t('cancel')"></button>
+
+                <button type="submit" :disabled="loading"
+                    class="relative overflow-hidden group px-10 py-4 bg-slate-900 text-white font-bold rounded-2xl shadow-xl shadow-slate-900/20 hover:shadow-2xl hover:shadow-slate-900/40 hover:-translate-y-1 transition-all duration-300 disabled:opacity-70 disabled:cursor-not-allowed">
+                    <div
+                        class="absolute inset-0 w-full h-full bg-gradient-to-r from-brand-500 to-amber-500 opacity-0 group-hover:opacity-100 transition-opacity duration-300">
+                    </div>
+                    <div class="relative flex items-center gap-3">
+                        <svg x-show="loading" class="animate-spin h-5 w-5 text-white" fill="none" viewBox="0 0 24 24">
+                            <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4">
+                            </circle>
+                            <path class="opacity-75" fill="currentColor"
+                                d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z">
+                            </path>
+                        </svg>
+                        <span x-text="loading ? t('processing') : t('confirm_donation')"></span>
+                    </div>
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    function donationForm() {
+        return {
+            loading: false,
+            loadingDonors: true,
+            success: false,
+            donors: [],
+            lang: localStorage.getItem('cora_lang') || 'en',
+
+            translations: {
+                en: {
+                    donor_selection: 'Donor Selection',
+                    select_donor: 'Select Donor',
+                    choose_donor: 'Choose a donor...',
+                    donation_details: 'Collection Details',
+                    donation_type: 'Donation Type',
+                    quantity: 'Volume Collected',
+                    notes: 'Clinical Notes',
+                    notes_placeholder: 'Any observations during collection...',
+                    cancel: 'Cancel',
+                    confirm_donation: 'Confirm Donation',
+                    processing: 'Processing...',
+                },
+                ar: {
+                    donor_selection: 'اختيار المتبرع',
+                    select_donor: 'المتبرع',
+                    choose_donor: 'اختر المتبرع...',
+                    donation_details: 'تفاصيل سحب الدم',
+                    donation_type: 'نوع التبرع',
+                    quantity: 'الكمية المسحوبة',
+                    notes: 'ملاحظات سريرية',
+                    notes_placeholder: 'أي ملاحظات أثناء السحب...',
+                    cancel: 'إلغاء',
+                    confirm_donation: 'تأكيد التبرع',
+                    processing: 'جاري التسجيل...',
+                }
+            },
+
+            t(key) { return this.translations[this.lang][key]; },
+            setLang(code) { this.lang = code; localStorage.setItem('cora_lang', code); },
+
+            formData: {
+                donor: '',
+                donation_date: new Date().toISOString().split('T')[0],
+                bag_number: 'UNIT-' + Math.floor(10000 + Math.random() * 90000), // Auto-gen for demo
+                component_type: 'Whole Blood',
+                quantity_ml: 450,
+                hemoglobin: '',
+                temperature: '',
+                pulse: '',
+                bp_systolic: '',
+                bp_diastolic: '',
+                arm: 'Right',
+                iqama_checked: false,
+                bag_visual_inspection: false,
+                notes: '',
+                status: 'Pending'
+            },
+
+            async init() {
+                // Fetch donors for dropdown
+                try {
+                    const response = await fetch('/api/donors/');
+                    this.donors = await response.json();
+                } catch (e) { console.error(e); }
+                this.loadingDonors = false;
+            },
+
+            async submitForm() {
+                this.loading = true;
+                this.success = false;
+
+                try {
+                    const response = await fetch('/api/donations/', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'X-CSRFToken': '{{ csrf_token }}'
+                        },
+                        body: JSON.stringify(this.formData)
+                    });
+
+                    if (response.ok) {
+                        this.success = true;
+                        setTimeout(() => window.location.href = '/donations/', 2000);
+                    } else {
+                        alert('Error recording donation');
+                    }
+                } catch (err) {
+                    console.error(err);
+                } finally {
+                    this.loading = false;
+                }
+            }
+        }
+    }
+</script>
+{% endblock %}

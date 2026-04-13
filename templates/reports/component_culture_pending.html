@@ -1,0 +1,454 @@
+{% extends 'base.html' %}
+
+{% block title %}Component Culture Pending | CoraBlood AI{% endblock %}
+
+{% block header %}
+<div class="flex items-center gap-2">
+    <span x-text="lang === 'en' ? 'Component Culture Pending' : 'مزارع المكونات المعلقة'"></span>
+    <span class="bg-red-100 text-red-600 text-[10px] font-bold px-2 py-0.5 rounded-full">ACTION REQUIRED</span>
+</div>
+{% endblock %}
+
+{% block header_actions %}
+<button class="text-slate-500 hover:text-slate-700 transition-colors">
+    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+            d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15">
+        </path>
+    </svg>
+</button>
+{% endblock %}
+
+{% block content %}
+<div class="space-y-8" x-data="{ 
+    section1: true,
+    section2: true,
+    section3: true,
+    section4: true
+}">
+
+    <!-- Pending First Result [48Hours] -->
+    <div class="bg-white rounded-xl shadow-sm border border-slate-100 overflow-hidden">
+        <div class="px-6 py-4 bg-slate-50 border-b border-slate-100 flex items-center justify-between cursor-pointer"
+            @click="section1 = !section1">
+            <h3 class="text-sm font-bold text-slate-700">Pending First Result [48Hours]</h3>
+            <svg class="w-4 h-4 text-slate-400 transition-transform duration-200" :class="section1 ? 'rotate-180' : ''"
+                fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
+            </svg>
+        </div>
+        <div x-show="section1" x-collapse>
+            <div class="overflow-x-auto">
+                <table class="min-w-full divide-y divide-slate-100">
+                    <thead class="bg-white">
+                        <tr>
+                            <th
+                                class="px-4 py-3 text-left text-[10px] font-bold text-slate-500 uppercase tracking-wider">
+                                #</th>
+                            <th
+                                class="px-4 py-3 text-left text-[10px] font-bold text-slate-500 uppercase tracking-wider">
+                                Aerobic Number</th>
+                            <th
+                                class="px-4 py-3 text-left text-[10px] font-bold text-slate-500 uppercase tracking-wider">
+                                Anaerobic Number</th>
+                            <th
+                                class="px-4 py-3 text-left text-[10px] font-bold text-slate-500 uppercase tracking-wider">
+                                Aerobic Bottle Lot Number</th>
+                            <th
+                                class="px-4 py-3 text-left text-[10px] font-bold text-slate-500 uppercase tracking-wider">
+                                Anaerobic Bottle Lot Number</th>
+                            <th
+                                class="px-4 py-3 text-left text-[10px] font-bold text-slate-500 uppercase tracking-wider">
+                                Status</th>
+                            <th
+                                class="px-4 py-3 text-left text-[10px] font-bold text-slate-500 uppercase tracking-wider">
+                                First Result</th>
+                            <th
+                                class="px-4 py-3 text-left text-[10px] font-bold text-slate-500 uppercase tracking-wider">
+                                Second Result</th>
+                            <th
+                                class="px-4 py-3 text-left text-[10px] font-bold text-slate-500 uppercase tracking-wider">
+                                Creation</th>
+                            <th
+                                class="px-4 py-3 text-left text-[10px] font-bold text-slate-500 uppercase tracking-wider">
+                                Duration</th>
+                            <th
+                                class="px-4 py-3 text-right text-[10px] font-bold text-slate-500 uppercase tracking-wider">
+                                Action</th>
+                        </tr>
+                    </thead>
+                    <tbody class="divide-y divide-slate-50 bg-white">
+                        {% for item in pending_first %}
+                        <tr class="hover:bg-slate-50 transition-colors">
+                            <td class="px-4 py-3 text-[11px] font-medium text-slate-700">{{ item.id }}</td>
+                            <td class="px-4 py-3 text-[11px] text-slate-600">{{ item.aero_num }}</td>
+                            <td class="px-4 py-3 text-[11px] text-slate-600">{{ item.anaero_num }}</td>
+                            <td class="px-4 py-3 text-[11px] text-slate-600">{{ item.aero_lot }}</td>
+                            <td class="px-4 py-3 text-[11px] text-slate-600">{{ item.anaero_lot }}</td>
+                            <td class="px-4 py-3">
+                                <span
+                                    class="bg-orange-100 text-orange-700 text-[9px] font-bold px-2 py-0.5 rounded border border-orange-200 block w-fit">
+                                    {{ item.status }}
+                                </span>
+                                <div class="mt-1 text-[9px] text-slate-400">
+                                    <div>On: {{ item.status_date }}</div>
+                                    <div>By: {{ item.status_by }}</div>
+                                </div>
+                            </td>
+                            <td class="px-4 py-3">
+                                <span
+                                    class="bg-slate-100 text-slate-500 text-[9px] font-bold px-2 py-0.5 rounded border border-slate-200">
+                                    N/A
+                                </span>
+                            </td>
+                            <td class="px-4 py-3">
+                                <span
+                                    class="bg-slate-100 text-slate-500 text-[9px] font-bold px-2 py-0.5 rounded border border-slate-200">
+                                    N/A
+                                </span>
+                            </td>
+                            <td class="px-4 py-3 text-[10px] text-slate-500">
+                                <div><span class="font-bold">Created:</span> {{ item.created_by }}</div>
+                                <div>{{ item.created_date }}</div>
+                            </td>
+                            <td class="px-4 py-3 text-[10px] text-red-500 font-bold">
+                                {{ item.duration }} Hours
+                            </td>
+                            <td class="px-4 py-3 text-right">
+                                <a href="{% url 'component_culture_view' item.id %}"
+                                    class="bg-[#2D89C8] hover:bg-[#2070a8] text-white text-[10px] font-bold py-1 px-3 rounded shadow-sm transition-colors cursor-pointer">
+                                    View
+                                </a>
+                            </td>
+                        </tr>
+                        {% empty %}
+                        <tr>
+                            <td colspan="11" class="px-4 py-8 text-center text-xs text-slate-400 font-medium">No pending
+                                first results</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <!-- Pending First Result Review [48Hours] -->
+    <div class="bg-white rounded-xl shadow-sm border border-slate-100 overflow-hidden">
+        <div class="px-6 py-4 bg-slate-50 border-b border-slate-100 flex items-center justify-between cursor-pointer"
+            @click="section2 = !section2">
+            <h3 class="text-sm font-bold text-slate-700">Pending First Result Review [48Hours]</h3>
+            <svg class="w-4 h-4 text-slate-400 transition-transform duration-200" :class="section2 ? 'rotate-180' : ''"
+                fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
+            </svg>
+        </div>
+        <div x-show="section2" x-collapse>
+            <div class="overflow-x-auto">
+                <table class="min-w-full divide-y divide-slate-100">
+                    <thead class="bg-white">
+                        <tr>
+                            <th
+                                class="px-4 py-3 text-left text-[10px] font-bold text-slate-500 uppercase tracking-wider">
+                                #</th>
+                            <th
+                                class="px-4 py-3 text-left text-[10px] font-bold text-slate-500 uppercase tracking-wider">
+                                Aerobic Number</th>
+                            <th
+                                class="px-4 py-3 text-left text-[10px] font-bold text-slate-500 uppercase tracking-wider">
+                                Anaerobic Number</th>
+                            <th
+                                class="px-4 py-3 text-left text-[10px] font-bold text-slate-500 uppercase tracking-wider">
+                                Aerobic Bottle Lot Number</th>
+                            <th
+                                class="px-4 py-3 text-left text-[10px] font-bold text-slate-500 uppercase tracking-wider">
+                                Anaerobic Bottle Lot Number</th>
+                            <th
+                                class="px-4 py-3 text-left text-[10px] font-bold text-slate-500 uppercase tracking-wider">
+                                Status</th>
+                            <th
+                                class="px-4 py-3 text-left text-[10px] font-bold text-slate-500 uppercase tracking-wider">
+                                First Result</th>
+                            <th
+                                class="px-4 py-3 text-left text-[10px] font-bold text-slate-500 uppercase tracking-wider">
+                                Second Result</th>
+                            <th
+                                class="px-4 py-3 text-left text-[10px] font-bold text-slate-500 uppercase tracking-wider">
+                                Creation</th>
+                            <th
+                                class="px-4 py-3 text-left text-[10px] font-bold text-slate-500 uppercase tracking-wider">
+                                Duration</th>
+                            <th
+                                class="px-4 py-3 text-right text-[10px] font-bold text-slate-500 uppercase tracking-wider">
+                                Action</th>
+                        </tr>
+                    </thead>
+                    <tbody class="divide-y divide-slate-50 bg-white">
+                        {% for item in pending_first_review %}
+                        <tr class="hover:bg-slate-50 transition-colors">
+                            <td class="px-4 py-3 text-[11px] font-medium text-slate-700">{{ item.id }}</td>
+                            <td class="px-4 py-3 text-[11px] text-slate-600">{{ item.aero_num }}</td>
+                            <td class="px-4 py-3 text-[11px] text-slate-600">{{ item.anaero_num }}</td>
+                            <td class="px-4 py-3 text-[11px] text-slate-600">{{ item.aero_lot }}</td>
+                            <td class="px-4 py-3 text-[11px] text-slate-600">{{ item.anaero_lot }}</td>
+                            <td class="px-4 py-3">
+                                <span
+                                    class="bg-yellow-100 text-yellow-700 text-[9px] font-bold px-2 py-0.5 rounded border border-yellow-200 block w-fit">
+                                    {{ item.status }}
+                                </span>
+                                <div class="mt-1 text-[9px] text-slate-400">
+                                    <div>On: {{ item.status_date }}</div>
+                                    <div>By: {{ item.status_by }}</div>
+                                </div>
+                            </td>
+                            <td class="px-4 py-3">
+                                <span
+                                    class="bg-[#10B981] text-white text-[9px] font-bold px-2 py-0.5 rounded shadow-sm">
+                                    No Growth
+                                </span>
+                            </td>
+                            <td class="px-4 py-3">
+                                <span
+                                    class="bg-slate-100 text-slate-500 text-[9px] font-bold px-2 py-0.5 rounded border border-slate-200">
+                                    N/A
+                                </span>
+                            </td>
+                            <td class="px-4 py-3 text-[10px] text-slate-500">
+                                <div><span class="font-bold">Created:</span> {{ item.created_by }}</div>
+                                <div>{{ item.created_date }}</div>
+                            </td>
+                            <td class="px-4 py-3 text-[10px] text-orange-500 font-bold">
+                                {{ item.duration }} Hours
+                            </td>
+                            <td class="px-4 py-3 text-right">
+                                <a href="{% url 'component_culture_view' item.id %}"
+                                    class="bg-[#2D89C8] hover:bg-[#2070a8] text-white text-[10px] font-bold py-1 px-3 rounded shadow-sm transition-colors cursor-pointer">
+                                    View
+                                </a>
+                            </td>
+                        </tr>
+                        {% empty %}
+                        <tr>
+                            <td colspan="11" class="px-4 py-8 text-center text-xs text-slate-400 font-medium">No pending
+                                reviews</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <!-- Pending Second Result [5 Days] -->
+    <div class="bg-white rounded-xl shadow-sm border border-slate-100 overflow-hidden">
+        <div class="px-6 py-4 bg-slate-50 border-b border-slate-100 flex items-center justify-between cursor-pointer"
+            @click="section3 = !section3">
+            <h3 class="text-sm font-bold text-slate-700">Pending Second Result [5 Days]</h3>
+            <svg class="w-4 h-4 text-slate-400 transition-transform duration-200" :class="section3 ? 'rotate-180' : ''"
+                fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
+            </svg>
+        </div>
+        <div x-show="section3" x-collapse>
+            <div class="overflow-x-auto">
+                <table class="min-w-full divide-y divide-slate-100">
+                    <thead class="bg-white">
+                        <tr>
+                            <th
+                                class="px-4 py-3 text-left text-[10px] font-bold text-slate-500 uppercase tracking-wider">
+                                #</th>
+                            <th
+                                class="px-4 py-3 text-left text-[10px] font-bold text-slate-500 uppercase tracking-wider">
+                                Aerobic Number</th>
+                            <th
+                                class="px-4 py-3 text-left text-[10px] font-bold text-slate-500 uppercase tracking-wider">
+                                Anaerobic Number</th>
+                            <th
+                                class="px-4 py-3 text-left text-[10px] font-bold text-slate-500 uppercase tracking-wider">
+                                Aerobic Bottle Lot Number</th>
+                            <th
+                                class="px-4 py-3 text-left text-[10px] font-bold text-slate-500 uppercase tracking-wider">
+                                Anaerobic Bottle Lot Number</th>
+                            <th
+                                class="px-4 py-3 text-left text-[10px] font-bold text-slate-500 uppercase tracking-wider">
+                                Status</th>
+                            <th
+                                class="px-4 py-3 text-left text-[10px] font-bold text-slate-500 uppercase tracking-wider">
+                                First Result</th>
+                            <th
+                                class="px-4 py-3 text-left text-[10px] font-bold text-slate-500 uppercase tracking-wider">
+                                Second Result</th>
+                            <th
+                                class="px-4 py-3 text-left text-[10px] font-bold text-slate-500 uppercase tracking-wider">
+                                Creation</th>
+                            <th
+                                class="px-4 py-3 text-left text-[10px] font-bold text-slate-500 uppercase tracking-wider">
+                                Duration</th>
+                            <th
+                                class="px-4 py-3 text-right text-[10px] font-bold text-slate-500 uppercase tracking-wider">
+                                Action</th>
+                        </tr>
+                    </thead>
+                    <tbody class="divide-y divide-slate-50 bg-white">
+                        {% for item in pending_second %}
+                        <tr class="hover:bg-slate-50 transition-colors">
+                            <td class="px-4 py-3 text-[11px] font-medium text-slate-700">{{ item.id }}</td>
+                            <td class="px-4 py-3 text-[11px] text-slate-600">{{ item.aero_num }}</td>
+                            <td class="px-4 py-3 text-[11px] text-slate-600">{{ item.anaero_num }}</td>
+                            <td class="px-4 py-3 text-[11px] text-slate-600">{{ item.aero_lot }}</td>
+                            <td class="px-4 py-3 text-[11px] text-slate-600">{{ item.anaero_lot }}</td>
+                            <td class="px-4 py-3">
+                                <span
+                                    class="bg-[#10B981] text-white text-[9px] font-bold px-2 py-0.5 rounded shadow-sm block w-fit">
+                                    {{ item.status }}
+                                </span>
+                                <div class="mt-1 text-[9px] text-slate-400">
+                                    <div>On: {{ item.status_date }}</div>
+                                    <div>By: {{ item.status_by }}</div>
+                                </div>
+                            </td>
+                            <td class="px-4 py-3">
+                                <span
+                                    class="bg-[#10B981] text-white text-[9px] font-bold px-2 py-0.5 rounded shadow-sm">
+                                    No Growth
+                                </span>
+                            </td>
+                            <td class="px-4 py-3">
+                                <span
+                                    class="bg-slate-100 text-slate-500 text-[9px] font-bold px-2 py-0.5 rounded border border-slate-200">
+                                    N/A
+                                </span>
+                            </td>
+                            <td class="px-4 py-3 text-[10px] text-slate-500">
+                                <div><span class="font-bold">Created:</span> {{ item.created_by }}</div>
+                                <div>{{ item.created_date }}</div>
+                            </td>
+                            <td class="px-4 py-3 text-[10px] text-slate-500 font-bold">
+                                {{ item.duration }} Hours
+                            </td>
+                            <td class="px-4 py-3 text-right">
+                                <a href="{% url 'component_culture_view' item.id %}"
+                                    class="bg-[#2D89C8] hover:bg-[#2070a8] text-white text-[10px] font-bold py-1 px-3 rounded shadow-sm transition-colors cursor-pointer">
+                                    View
+                                </a>
+                            </td>
+                        </tr>
+                        {% empty %}
+                        <tr>
+                            <td colspan="11" class="px-4 py-8 text-center text-xs text-slate-400 font-medium">No pending
+                                second results</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <!-- Pending Second Result Review [5 Days] -->
+    <div class="bg-white rounded-xl shadow-sm border border-slate-100 overflow-hidden">
+        <div class="px-6 py-4 bg-slate-50 border-b border-slate-100 flex items-center justify-between cursor-pointer"
+            @click="section4 = !section4">
+            <h3 class="text-sm font-bold text-slate-700">Pending Second Result Review [5 Days]</h3>
+            <svg class="w-4 h-4 text-slate-400 transition-transform duration-200" :class="section4 ? 'rotate-180' : ''"
+                fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
+            </svg>
+        </div>
+        <div x-show="section4" x-collapse>
+            <div class="overflow-x-auto">
+                <table class="min-w-full divide-y divide-slate-100">
+                    <thead class="bg-white">
+                        <tr>
+                            <th
+                                class="px-4 py-3 text-left text-[10px] font-bold text-slate-500 uppercase tracking-wider">
+                                #</th>
+                            <th
+                                class="px-4 py-3 text-left text-[10px] font-bold text-slate-500 uppercase tracking-wider">
+                                Aerobic Number</th>
+                            <th
+                                class="px-4 py-3 text-left text-[10px] font-bold text-slate-500 uppercase tracking-wider">
+                                Anaerobic Number</th>
+                            <th
+                                class="px-4 py-3 text-left text-[10px] font-bold text-slate-500 uppercase tracking-wider">
+                                Aerobic Bottle Lot Number</th>
+                            <th
+                                class="px-4 py-3 text-left text-[10px] font-bold text-slate-500 uppercase tracking-wider">
+                                Anaerobic Bottle Lot Number</th>
+                            <th
+                                class="px-4 py-3 text-left text-[10px] font-bold text-slate-500 uppercase tracking-wider">
+                                Status</th>
+                            <th
+                                class="px-4 py-3 text-left text-[10px] font-bold text-slate-500 uppercase tracking-wider">
+                                First Result</th>
+                            <th
+                                class="px-4 py-3 text-left text-[10px] font-bold text-slate-500 uppercase tracking-wider">
+                                Second Result</th>
+                            <th
+                                class="px-4 py-3 text-left text-[10px] font-bold text-slate-500 uppercase tracking-wider">
+                                Creation</th>
+                            <th
+                                class="px-4 py-3 text-left text-[10px] font-bold text-slate-500 uppercase tracking-wider">
+                                Duration</th>
+                            <th
+                                class="px-4 py-3 text-right text-[10px] font-bold text-slate-500 uppercase tracking-wider">
+                                Action</th>
+                        </tr>
+                    </thead>
+                    <tbody class="divide-y divide-slate-50 bg-white">
+                        {% for item in pending_second_review %}
+                        <tr class="hover:bg-slate-50 transition-colors">
+                            <td class="px-4 py-3 text-[11px] font-medium text-slate-700">{{ item.id }}</td>
+                            <td class="px-4 py-3 text-[11px] text-slate-600">{{ item.aero_num }}</td>
+                            <td class="px-4 py-3 text-[11px] text-slate-600">{{ item.anaero_num }}</td>
+                            <td class="px-4 py-3 text-[11px] text-slate-600">{{ item.aero_lot }}</td>
+                            <td class="px-4 py-3 text-[11px] text-slate-600">{{ item.anaero_lot }}</td>
+                            <td class="px-4 py-3">
+                                <span
+                                    class="bg-orange-100 text-orange-700 text-[9px] font-bold px-2 py-0.5 rounded border border-orange-200 block w-fit">
+                                    {{ item.status }}
+                                </span>
+                                <div class="mt-1 text-[9px] text-slate-400">
+                                    <div>On: {{ item.status_date }}</div>
+                                    <div>By: {{ item.status_by }}</div>
+                                </div>
+                            </td>
+                            <td class="px-4 py-3">
+                                <span
+                                    class="bg-[#10B981] text-white text-[9px] font-bold px-2 py-0.5 rounded shadow-sm">
+                                    No Growth
+                                </span>
+                            </td>
+                            <td class="px-4 py-3">
+                                <span
+                                    class="bg-[#10B981] text-white text-[9px] font-bold px-2 py-0.5 rounded shadow-sm">
+                                    No Growth
+                                </span>
+                            </td>
+                            <td class="px-4 py-3 text-[10px] text-slate-500">
+                                <div><span class="font-bold">Created:</span> {{ item.created_by }}</div>
+                                <div>{{ item.created_date }}</div>
+                            </td>
+                            <td class="px-4 py-3 text-[10px] text-slate-500 font-bold">
+                                {{ item.duration }} Hours
+                            </td>
+                            <td class="px-4 py-3 text-right">
+                                <a href="{% url 'component_culture_view' item.id %}"
+                                    class="bg-[#2D89C8] hover:bg-[#2070a8] text-white text-[10px] font-bold py-1 px-3 rounded shadow-sm transition-colors cursor-pointer">
+                                    View
+                                </a>
+                            </td>
+                        </tr>
+                        {% empty %}
+                        <tr>
+                            <td colspan="11" class="px-4 py-8 text-center text-xs text-slate-400 font-medium">No pending
+                                second result reviews</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

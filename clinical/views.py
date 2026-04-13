@@ -1,0 +1,1997 @@
+from .services import WorkflowService
+from donors.models import Donor
+from django.shortcuts import render, redirect, get_object_or_404
+from django.http import JsonResponse
+from django.contrib import messages
+from django.contrib.auth.decorators import login_required
+
+from rest_framework import viewsets, status, decorators
+from rest_framework.response import Response
+from django.db import transaction
+from django.utils import timezone
+from .models import DonorWorkflow, Question, VitalLimit, BloodDraw, AdverseReaction, PostDonationSurvey, PreSeparation
+from .serializers import QuestionSerializer, VitalSignsSerializer, VitalLimitSerializer, WorkflowDetailSerializer, BloodDrawSerializer, AdverseReactionSerializer, PostDonationSurveySerializer, PreSeparationSerializer
+from .services import WorkflowService
+from .queue_api import WorkflowQueueViewSet
+
+# Settings Views
+@login_required
+def settings_questionnaire(request):
+    return render(request, 'clinical/settings_questionnaire.html')
+
+@login_required
+def settings_vitals(request):
+    return render(request, 'clinical/settings_vitals.html')
+
+@login_required
+def settings_contraindications(request):
+    from .models import EligibilityRule, DeferralReason, CollectionConfig, ProductSeparationRule
+    
+    # Load Config
+    config, _ = CollectionConfig.objects.get_or_create(pk=1)
+    
+    if request.method == 'POST':
+        action = request.POST.get('action') # 'rule_save' or 'config_save'
+        
+        if action == 'config_save':
+            # Workflow Controls
+            config.enable_pre_donation_checks = request.POST.get('enable_pre_donation_checks') == 'on'
+            config.require_bag_inspection = request.POST.get('require_bag_inspection') == 'on'
+            config.require_arm_inspection = request.POST.get('require_arm_inspection') == 'on'
+            config.allow_manual_time_entry = request.POST.get('allow_manual_time_entry') == 'on'
+            
+            # Stages
+            config.enable_separation_stage = request.POST.get('enable_separation_stage') == 'on'
+            config.enable_initial_label_stage = request.POST.get('enable_initial_label_stage') == 'on'
+            config.enable_untested_storage_stage = request.POST.get('enable_untested_storage_stage') == 'on'
+            config.enable_notifications_stage = request.POST.get('enable_notifications_stage') == 'on'
+            
+            config.save()
+            messages.success(request, "Workflow settings updated.")
+            return redirect('settings_contraindications')
+
+        elif action == 'separation_rule_save':
+            s_id = request.POST.get('separation_rule_id')
+            
+            defaults = {
+                'name': request.POST.get('name'),
+                'component_type': request.POST.get('component_type'),
+                'min_volume_ml': request.POST.get('min_volume_ml') or 0,
+                'max_volume_ml': request.POST.get('max_volume_ml') or 0,
+                'centrifuge_program': request.POST.get('centrifuge_program'),
+                'expiration_hours': request.POST.get('expiration_hours') or 0,
+                'is_active': True 
+            }
+            
+            if s_id:
+                ProductSeparationRule.objects.filter(pk=s_id).update(**defaults)
+                messages.success(request, "Separation rule updated.")
+            else:
+                ProductSeparationRule.objects.create(**defaults)
+                messages.success(request, "New separation rule created.")
+            
+            return redirect('settings_contraindications')
+
+        elif action == 'separation_rule_delete':
+            s_id = request.POST.get('separation_rule_id')
+            ProductSeparationRule.objects.filter(pk=s_id).delete()
+            messages.success(request, "Separation rule deleted.")
+            return redirect('settings_contraindications')
+
+        else:
+            # Rule Save Logic (Existing)
+            rule_id = request.POST.get('rule_id')
+            min_val = request.POST.get('min_value')
+            max_val = request.POST.get('max_value')
+            
+            # Deferral Params
+            deferral_code = request.POST.get('deferral_code')
+            deferral_type = request.POST.get('deferral_type') # 'PERMANENT' or 'TEMPORARY'
+            days = request.POST.get('deferral_days', 0)
+            
+            rule = get_object_or_404(EligibilityRule, pk=rule_id)
+            
+            if min_val: rule.min_value = min_val
+            if max_val: rule.max_value = max_val
+            
+            # Update Deferral config
+            if deferral_code:
+                rule.deferral_code = deferral_code
+                rule.is_permanent_deferral = (deferral_type == 'PERMANENT')
+                rule.deferral_days = int(days) if days else 0
+                
+                # Sync with central DeferralSettings
+                DeferralReason.objects.update_or_create(
+                    code=deferral_code,
+                    defaults={
+                        'reason_en': f"Violation of {rule.name}",
+                        'reason_ar': f"مخالفة {rule.name}",
+                        'is_permanent': rule.is_permanent_deferral,
+                        'default_duration_days': rule.deferral_days
+                    }
+                )
+                messages.success(request, f"Updated rule & synced deferral: {rule.name}")
+            else:
+                messages.success(request, f"Updated rule: {rule.name}")
+                
+            rule.save()
+            return redirect('settings_contraindications')
+
+    rules = EligibilityRule.objects.all()
+    separation_rules = ProductSeparationRule.objects.all()
+    return render(request, 'clinical/settings_contraindications.html', {
+        'rules': rules, 
+        'config': config,
+        'separation_rules': separation_rules
+    })
+
+
+class VitalLimitViewSet(viewsets.ModelViewSet):
+    queryset = VitalLimit.objects.all()
+    serializer_class = VitalLimitSerializer
+
+    def get_queryset(self):
+        # Ensure at least one exists
+        if not VitalLimit.objects.exists():
+            VitalLimit.load() # Creates default
+        return super().get_queryset()
+
+class QuestionViewSet(viewsets.ModelViewSet):
+    queryset = Question.objects.filter(is_active=True).order_by('order')
+    serializer_class = QuestionSerializer
+
+    def get_queryset(self):
+        # Admin sees all, frontend sees active only? 
+        # For settings page, we want to see ALL questions to manage them.
+        return Question.objects.all().order_by('order')
+
+class DonationWorkflowViewSet(viewsets.ReadOnlyModelViewSet):
+    queryset = DonorWorkflow.objects.all()
+    serializer_class = WorkflowDetailSerializer
+
+    @decorators.action(detail=True, methods=['get'])
+    def questions(self, request, pk=None):
+        """Return all active questions"""
+        questions = Question.objects.filter(is_active=True).order_by('order')
+        return Response(QuestionSerializer(questions, many=True).data)
+
+    @decorators.action(detail=True, methods=['post'])
+    def confirm_profile(self, request, pk=None):
+        workflow = self.get_object()
+        
+        # Move to Questionnaire step
+        if workflow.status == DonorWorkflow.Step.REGISTRATION:
+            workflow.status = DonorWorkflow.Step.QUESTIONNAIRE
+            workflow.save()
+            return Response({'status': 'success'})
+        
+        return Response({'status': 'ignored', 'message': 'Workflow not in Registration state'}, status=200)
+
+    @decorators.action(detail=True, methods=['post'])
+    def submit_answers(self, request, pk=None):
+        workflow = self.get_object()
+        answers = request.data.get('answers', [])
+        # answers format: [{'question_id': 1, 'answer': 'Yes'}, ...]
+        
+        # Simple Logic: Check for deferrals
+        flat_answers = {}
+        deferred = False
+        deferral_reason = ""
+        days = 0
+        
+        for ans in answers:
+            qid = ans.get('question_id')
+            val = ans.get('answer')
+            flat_answers[qid] = val
+            
+            try:
+                q = Question.objects.get(pk=qid)
+                if q.defer_if_answer_is == val:
+                    deferred = True
+                    deferral_reason = f"Answered {val} to: {q.text_en}"
+                    days = max(days, q.deferral_days)
+            except Question.DoesNotExist:
+                pass
+
+        if deferred:
+            workflow.status = DonorWorkflow.Step.DEFERRED
+            workflow.save()
+            return Response({
+                'status': 'deferred',
+                'result': 'REJECTED',
+                'reason': deferral_reason,
+                'defer_until': f"{days} days"
+            })
+            
+        # Pass
+        WorkflowService.submit_questionnaire(workflow, flat_answers, request.user)
+        return Response({'status': 'success'})
+
+    @decorators.action(detail=True, methods=['post'])
+    def save_vitals(self, request, pk=None):
+        workflow = self.get_object()
+        serializer = VitalSignsSerializer(data=request.data)
+        if serializer.is_valid():
+            vitals, reasons = WorkflowService.submit_vitals(workflow, serializer.validated_data, request.user)
+            if vitals.passed:
+                return Response({'status': 'success'})
+            else:
+                return Response({
+                    'status': 'rejected',
+                    'reason': ", ".join(reasons)
+                })
+        return Response(serializer.errors, status=400)
+
+    @decorators.action(detail=True, methods=['post'])
+    def print_label(self, request, pk=None):
+        """
+        Mock endpoint to print Donation Code barcode.
+        """
+        workflow = self.get_object()
+        if hasattr(workflow, 'blood_draw'):
+            code = workflow.blood_draw.segment_number
+            # In a real system, this would send a ZPL/EPL command to a network printer at 192.168.x.x
+            # or return a PDF/Image blob.
+            return Response({
+                'status': 'success', 
+                'message': f'Printing barcode for {code}...',
+                'code': code,
+                'printed_at': 'Now'
+            })
+        return Response({'status': 'error', 'message': 'No Blood Draw found'}, status=400)
+
+    @decorators.action(detail=True, methods=['post'])
+    def save_withdrawal(self, request, pk=None):
+        workflow = self.get_object()
+        serializer = BloodDrawSerializer(data=request.data)
+        
+        if not serializer.is_valid():
+            # Explicitly return constraint errors
+            return Response({'status': 'error', 'message': f"Validation Failed: {serializer.errors}"}, status=400)
+
+        try:
+            data = serializer.validated_data
+            
+            # Use Service Layer for consistency
+            draw = WorkflowService.submit_blood_draw(workflow, data, request.user)
+            
+            # Note: submit_blood_draw sets status to LABS, but view-specific flow 
+            # might want ADVERSE_REACTION (as per original view logic).
+            # Overriding to ADVERSE_REACTION for now as it's the next UI tab.
+            workflow.status = DonorWorkflow.Step.ADVERSE_REACTION
+            workflow.save()
+
+            return Response({
+                'status': 'success',
+                'segment_number': draw.segment_number,
+                'donation_code': workflow.donation_code,
+                'draw_id': draw.id
+            })
+
+        except Exception as e:
+            import traceback
+            return Response({
+                'status': 'error', 
+                'message': f"Server Error: {str(e)}", 
+                'traceback': traceback.format_exc()
+            }, status=500)
+    @decorators.action(detail=True, methods=['post'])
+    def save_adverse_reaction(self, request, pk=None):
+        workflow = self.get_object()
+        data = request.data
+        
+        # Check if skipping (No Reaction)
+        if data.get('no_reaction') is True:
+            # Ensure no reaction exists? Or keep history?
+            # Ideally we check if one exists and delete it? Or just ignore?
+            # Let's clean up if user changed mind from Yes to No.
+            if hasattr(workflow, 'adverse_reaction'):
+                workflow.adverse_reaction.delete()
+            
+            # Progress Step
+            if workflow.status == DonorWorkflow.Step.ADVERSE_REACTION or workflow.status == DonorWorkflow.Step.COLLECTION:
+                 workflow.status = DonorWorkflow.Step.SURVEY
+                 workflow.save()
+                 
+            return Response({'status': 'success', 'message': 'No adverse reaction recorded.'})
+        
+        # Save Reaction
+        serializer = AdverseReactionSerializer(data=data)
+        if serializer.is_valid():
+            # Update or Create
+            # Since OneToOne, we should check existing
+            AdverseReaction.objects.update_or_create(
+                workflow=workflow,
+                defaults=serializer.validated_data
+            )
+            
+            
+            if workflow.status == DonorWorkflow.Step.ADVERSE_REACTION or workflow.status == DonorWorkflow.Step.COLLECTION:
+                workflow.status = DonorWorkflow.Step.SURVEY
+                workflow.save()
+            
+            return Response({'status': 'success', 'message': 'Adverse reaction recorded.'})
+        
+        return Response(serializer.errors, status=400)
+
+    @decorators.action(detail=True, methods=['post'])
+    def save_survey(self, request, pk=None):
+        workflow = self.get_object()
+        data = request.data
+        
+        serializer = PostDonationSurveySerializer(data=data)
+        if serializer.is_valid():
+            PostDonationSurvey.objects.update_or_create(
+                workflow=workflow,
+                defaults=serializer.validated_data
+            )
+            
+            if workflow.status == DonorWorkflow.Step.SURVEY:
+                 workflow.status = DonorWorkflow.Step.LABS
+                 workflow.save()
+            
+            return Response({'status': 'success', 'message': 'Survey saved.'})
+        
+        return Response(serializer.errors, status=400)
+
+    @decorators.action(detail=True, methods=['post'])
+    def save_medication(self, request, pk=None):
+        workflow = self.get_object()
+        data = request.data
+        
+        from .serializers import MedicationRecordSerializer
+        from .models import MedicationRecord
+        
+        serializer = MedicationRecordSerializer(data=data)
+        if serializer.is_valid():
+            MedicationRecord.objects.update_or_create(
+                workflow=workflow,
+                defaults=serializer.validated_data
+            )
+            
+            # Progress Step
+            if workflow.status == DonorWorkflow.Step.QUESTIONNAIRE or workflow.status == DonorWorkflow.Step.MEDICATION:
+                 workflow.status = DonorWorkflow.Step.VITALS
+                 workflow.save()
+            
+            return Response({'status': 'success', 'message': 'Medication saved.'})
+        
+        return Response(serializer.errors, status=400)
+
+    @decorators.action(detail=True, methods=['post'])
+    def save_pre_separation(self, request, pk=None):
+        workflow = self.get_object()
+        
+        # Get or create PreSeparation model
+        pre_sep, created = PreSeparation.objects.get_or_create(workflow=workflow)
+        
+        # Check action type (save, receive, verify)
+        action = request.data.get('action', 'save')
+        
+        # Update fields
+        serializer = PreSeparationSerializer(pre_sep, data=request.data, partial=True)
+        if serializer.is_valid():
+            instance = serializer.save()
+            
+            # Handle timestamps based on action
+            if action == 'receive' and not instance.received_at:
+                instance.received_at = timezone.now()
+                instance.received_by = request.user
+                instance.save()
+            elif action == 'verify' and not instance.verified_at:
+                instance.verified_at = timezone.now()
+                instance.verified_by = request.user
+                instance.save()
+            elif action == 'approve':
+                # Auto-Receive if not already received
+                if not instance.received_at:
+                    instance.received_at = timezone.now()
+                    instance.received_by = request.user
+                
+                # Final Approval Logic (Independent of Verification)
+                instance.is_approved = True
+                instance.save()
+                
+                # Advance Workflow
+                if workflow.status == DonorWorkflow.Step.PRE_SEPARATION:
+                    workflow.status = DonorWorkflow.Step.COMPONENTS
+                    workflow.save()
+                
+            return Response({
+                'status': 'success',
+                'message': 'Pre-separation data saved.',
+                'data': PreSeparationSerializer(instance).data
+            })
+        else:
+            return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+    @decorators.action(detail=True, methods=['post'])
+    def submit_lab_result(self, request, pk=None):
+        workflow = self.get_object()
+        from .models import LabResult
+        
+        # Manual Entry
+        test_code = request.data.get('test_code')
+        test_name = request.data.get('test_name')
+        result_value = request.data.get('result_value')
+        is_abnormal = request.data.get('is_abnormal') in ['true', 'True', True]
+        
+        # Create Result
+        LabResult.objects.create(
+            workflow=workflow,
+            test_code=test_code,
+            test_name=test_name,
+            result_value=result_value,
+            is_abnormal=is_abnormal,
+            technician=request.user,
+            tested_at=timezone.now()
+        )
+        
+        # Check overall status
+        workflow.status = DonorWorkflow.Step.COMPLETED
+        workflow.save(update_fields=['status', 'updated_at'] if hasattr(workflow, 'updated_at') else ['status'])
+        
+        # Release components from QUARANTINE
+        from inventory.models import BloodComponent
+        new_status = 'DISCARDED' if is_abnormal else 'AVAILABLE'
+        BloodComponent.objects.filter(workflow=workflow, status='QUARANTINE').update(status=new_status)
+        
+        return Response({'status': 'success', 'message': f'Lab result saved. Components set to {new_status}.'})
+    @decorators.action(detail=True, methods=['post'])
+    def add_order(self, request, pk=None):
+        workflow = self.get_object()
+        from .models import LabOrder
+        
+        LabOrder.objects.create(
+            workflow=workflow,
+            order_code=request.data.get('order_code'),
+            system=request.data.get('system'),
+            status=LabOrder.Status.SENT,
+            created_by=request.user
+        )
+        return Response({'status': 'success', 'message': 'Order created.'})
+        
+    @decorators.action(detail=True, methods=['post'])
+    def save_pre_separation(self, request, pk=None):
+        workflow = self.get_object()
+        data = request.data
+        
+        # Get or Create
+        pre_sep, created = PreSeparation.objects.get_or_create(workflow=workflow)
+        
+        # Update Checkboxes
+        if 'unit_label_check' in data: pre_sep.unit_label_check = data['unit_label_check']
+        if 'donor_sample_label_check' in data: pre_sep.donor_sample_label_check = data['donor_sample_label_check']
+        if 'unit_temp_check' in data: pre_sep.unit_temp_check = data['unit_temp_check']
+        if 'visual_inspection' in data: pre_sep.visual_inspection = data['visual_inspection']
+        
+        # Update Measurements & Info
+        if 'volume_ml' in data: pre_sep.volume_ml = data['volume_ml']
+        if 'bag_lot_no' in data: pre_sep.bag_lot_no = data['bag_lot_no']
+        if 'bag_type' in data: pre_sep.bag_type = data['bag_type']
+        if 'bag_expiry_date' in data: pre_sep.bag_expiry_date = data['bag_expiry_date'] or None
+        if 'notes' in data: pre_sep.notes = data['notes']
+
+        # Status Actions (Legacy/Alternative logic if needed, but primarily saving form now)
+        if data.get('action') == 'save':
+            # Maybe mark as verified if all checks pass? 
+            # For now just save.
+            pass
+
+        pre_sep.save()
+        
+        return Response({'status': 'success', 'data': PreSeparationSerializer(pre_sep).data})
+
+    def get_serializer_class(self):
+        if self.action == 'list':
+            from .serializers import DonationListSerializer
+            return DonationListSerializer
+        return super().get_serializer_class()
+
+    def get_queryset(self):
+        qs = super().get_queryset()
+        if self.action == 'list':
+            return qs.select_related('donor').order_by('-created_at')
+        return qs
+
+    @decorators.action(detail=True, methods=['get'])
+    def components(self, request, pk=None):
+        """Return the list of blood components generated for this workflow."""
+        workflow = self.get_object()
+        from inventory.models import BloodComponent
+        comps = BloodComponent.objects.filter(workflow=workflow).order_by('id')
+        
+        data = [{
+            'id': c.id,
+            'type': c.component_type,
+            'volume': c.volume_ml,
+            'unit_number': c.unit_number,
+            'expiration_date': c.expiration_date.strftime('%Y-%m-%d %H:%M') if c.expiration_date else 'N/A',
+            'status': c.status,
+            'visual_inspection': c.visual_inspection,
+            'room_temp': c.room_temp_check,
+            'notes': c.notes,
+            'is_labeled': bool('Label printed' in str(c.notes)),
+            'component_type': c.component_type,
+            'volume_ml': c.volume_ml,
+            'storage_time': c.storage_time_after_prep.strftime('%H:%M') if c.storage_time_after_prep else '',
+        } for c in comps]
+        
+        return Response(data)
+
+    @decorators.action(detail=True, methods=['post'])
+    def separate_components(self, request, pk=None):
+        workflow = self.get_object()
+        components = request.data.get('components', [])
+        
+        try:
+            from inventory.services import InventoryService
+            
+            created = InventoryService.separate_batch(workflow, components, request.user)
+            
+            # Update Status to LABS (Next step)
+            # Or COMPLETED if that's the end of processing
+            # Assuming 'LABS' is next.
+            if workflow.status != DonorWorkflow.Step.LABS and workflow.status != DonorWorkflow.Step.COMPLETED:
+                workflow.status = DonorWorkflow.Step.LABS
+                workflow.save()
+
+            return Response({
+                'status': 'success',
+                'message': f"Created {len(created)} components",
+                'components': [{
+                    'id': c.id,
+                    'type': c.component_type,
+                    'volume': c.volume_ml,
+                    'unit_number': c.unit_number,
+                    'expiration_date': c.expiration_date.strftime('%Y-%m-%d %H:%M') if c.expiration_date else 'N/A',
+                    'status': c.status,
+                    'visual_inspection': c.visual_inspection,
+                    'notes': c.notes,
+                    'created_at': c.manufactured_at.strftime('%Y-%m-%d %H:%M') if c.manufactured_at else '',
+                    'created_by': request.user.username if request.user and request.user.is_authenticated else 'System',
+                    'room_temp': c.room_temp_check,
+                    'storage_time': (
+                        c.storage_time_after_prep.strftime('%H:%M')
+                        if c.storage_time_after_prep and hasattr(c.storage_time_after_prep, 'strftime')
+                        else str(c.storage_time_after_prep) if c.storage_time_after_prep
+                        else ''
+                    )
+                } for c in created]
+            })
+        except Exception as e:
+            import traceback
+            return Response({
+                'status': 'error',
+                'error': f"{str(e)} \n {traceback.format_exc()}"
+            }, status=500)
+
+    @decorators.action(detail=True, methods=['get'])
+    def get_attachments(self, request, pk=None):
+        workflow = self.get_object()
+        attachments = workflow.attachments.all().order_by('-created_at')
+        from .serializers import DonationAttachmentSerializer
+        serializer = DonationAttachmentSerializer(attachments, many=True)
+        return Response({'status': 'success', 'data': serializer.data})
+
+    @decorators.action(detail=True, methods=['post'])
+    def upload_attachment(self, request, pk=None):
+        workflow = self.get_object()
+        
+        try:
+            from .models import DonationAttachment
+            from .serializers import DonationAttachmentSerializer
+            
+            attachment = DonationAttachment.objects.create(
+                workflow=workflow,
+                title=request.data.get('title'),
+                notes=request.data.get('notes', ''),
+                file=request.FILES.get('file'),
+                created_by=request.user
+            )
+            
+            return Response({
+                'status': 'success', 
+                'message': 'Attachment uploaded successfully',
+                'data': DonationAttachmentSerializer(attachment).data
+            })
+        except Exception as e:
+             return Response({'status': 'error', 'error': str(e)}, status=400)
+
+@login_required
+def start_donation(request, donor_id):
+    if request.method == 'POST':
+        donor = get_object_or_404(Donor, pk=donor_id)
+        
+        # Check if active exists or start new
+        workflow = WorkflowService.start_workflow(donor, request.user)
+        
+        # Support AJAX/JSON for Single Page App feel (New Donors List)
+        if request.headers.get('x-requested-with') == 'XMLHttpRequest' or request.accepts('application/json'):
+            return JsonResponse({'status': 'success', 'workflow_id': workflow.id})
+
+        messages.success(request, "Donation session started successfully.")
+        return redirect('donor_workflow', pk=donor.pk)
+    return redirect('donor_list')
+
+@login_required
+def queue_questionnaire(request):
+    # Donors who passed Profile Approval (Ready for Q)
+    workflows = DonorWorkflow.objects.filter(status=DonorWorkflow.Step.QUESTIONNAIRE).order_by('created_at')
+    return render(request, 'workflow/queue_questionnaire.html', {
+        'workflows': workflows,
+        'queue_step': 'QUESTIONNAIRE'
+    })
+
+@login_required
+def queue_profile(request):
+    # Donors newly INITIATED (Waiting for Profile Approval)
+    workflows = DonorWorkflow.objects.filter(status=DonorWorkflow.Step.REGISTRATION).order_by('created_at')
+    return render(request, 'workflow/queue_profile.html', {
+        'workflows': workflows,
+        'queue_step': 'REGISTRATION'
+    })
+
+@login_required
+def queue_vitals(request):
+    return render(request, 'workflow/queue_vitals.html', {'queue_step': 'VITALS'})
+
+@login_required
+def queue_collection(request):
+    return render(request, 'workflow/queue_collection.html', {'queue_step': 'COLLECTION'})
+    return render(request, 'workflow/queue_collection.html')
+
+@login_required
+def lab_dashboard(request):
+    # Fetch all workflows in LABS state
+    pending_labs = DonorWorkflow.objects.filter(status=DonorWorkflow.Step.LABS).select_related('donor', 'blood_draw').order_by('created_at')
+    return render(request, 'labs/dashboard.html', {'samples': pending_labs})
+
+@login_required
+def infinity_list(request):
+    return render(request, 'labs/dashboard.html') # Stub
+
+@login_required
+def ortho_list(request):
+    return render(request, 'labs/dashboard.html') # Stub
+
+
+
+@login_required
+def settings_deferral(request):
+    from .models import DeferralReason
+    
+    if request.method == 'POST':
+        action = request.POST.get('action')
+        
+        if action == 'save':
+            d_id = request.POST.get('id')
+            defaults = {
+                'code': request.POST.get('code') or f"DEF-{DeferralReason.objects.count() + 100}", 
+                'reason_en': request.POST.get('title_en'),
+                'reason_ar': request.POST.get('title_ar'),
+                'description_en': request.POST.get('desc_en'),
+                'description_ar': request.POST.get('desc_ar'),
+                'default_duration_days': int(request.POST.get('blocking_days') or 0),
+                'deferral_type': request.POST.get('type'),
+                'is_active': request.POST.get('is_active') == 'on'
+            }
+            
+            if d_id:
+                DeferralReason.objects.filter(pk=d_id).update(**defaults)
+                messages.success(request, "Deferral reason updated.")
+            else:
+                DeferralReason.objects.create(**defaults)
+                messages.success(request, "New deferral reason added.")
+                
+        elif action == 'delete':
+            d_id = request.POST.get('id')
+            DeferralReason.objects.filter(pk=d_id).delete()
+            messages.success(request, "Deferral reason deleted.")
+            
+        return redirect('settings_deferral')
+
+    deferrals = DeferralReason.objects.all().order_by('-id')
+    return render(request, 'clinical/settings_deferral.html', {'deferrals': deferrals})
+
+
+@login_required
+def modification_requests_list(request):
+    from .models import ModificationRequest
+    
+    # Filter logic (basic placeholder for now)
+    requests = ModificationRequest.objects.all().order_by('-created_at')
+    
+    return render(request, 'clinical/modification_requests.html', {'requests': requests})
+
+
+@login_required
+def add_component_manual(request):
+    from .models import ProductSeparationRule
+    
+    # Choices for dropdowns
+    component_types = ProductSeparationRule.Component.choices
+    blood_groups = ['A+', 'A-', 'B+', 'B-', 'AB+', 'AB-', 'O+', 'O-']
+    sources = ['In-House', 'External Drive', 'Imported']
+    sites = ['Main Center', 'Mobile Unit 1', 'Mobile Unit 2']
+
+    if request.method == 'POST':
+        # Logic to save connection (placeholder for now as no ManualComponent model exists yet)
+        messages.success(request, "Manual component added successfully (Simulation).")
+        return redirect('add_component_manual')
+
+    return render(request, 'clinical/add_component_manual.html', {
+        'component_types': component_types,
+        'blood_groups': blood_groups,
+        'sources': sources,
+        'sites': sites
+    })
+
+
+@login_required
+def donation_certificate_report(request):
+    from .models import DonorWorkflow
+    
+    # Fetch donations (Workflows)
+    # Ideally filter by status='COMPLETED' or similar, but showing all for demo
+    workflows = DonorWorkflow.objects.select_related('donor', 'blood_draw').order_by('-created_at')
+
+    # Mocking 'Blood Nature' and 'Certificate Status' for display consistency with screenshot
+    # In a real app, these would be fields on the model
+    for wf in workflows:
+        wf.blood_nature = "Whole Blood" # Default
+        wf.cert_status = "New" # Default
+
+    context = {
+        'workflows': workflows
+    }
+    return render(request, 'clinical/donation_certificate_report.html', context)
+
+
+@login_required
+def questionnaire_failed_list(request):
+    # Donors who were deferred specifically during Questionnaire
+    # Ideally tracked by 'status=DEFERRED' AND 'last_step=QUESTIONNAIRE' 
+    # For now, we show all DEFERRED workflows for simplicity, or we can refine logic later
+    workflows = DonorWorkflow.objects.filter(status=DonorWorkflow.Step.DEFERRED).order_by('-updated_at')
+    
+    return render(request, 'workflow/queue_questionnaire_failed.html', {
+        'workflows': workflows,
+        'queue_step': 'DEFERRED'
+    })
+
+@login_required
+def blood_drawn_completed_list(request):
+    # Donors who completed Blood Draw (waiting for Labs or just historical log)
+    # Status is typically 'LABS' or 'COMPLETED' if just finished draw
+    # Or specifically successful blood draws.
+    workflows = DonorWorkflow.objects.filter(status__in=[DonorWorkflow.Step.LABS, DonorWorkflow.Step.COMPLETED]).select_related('blood_draw', 'donor').order_by('-updated_at')
+    
+    return render(request, 'workflow/blood_drawn_completed.html', {
+        'workflows': workflows,
+        'queue_step': 'COMPLETED_DRAW'
+    })
+
+@login_required
+def donation_list(request):
+    return render(request, 'donations/list.html')
+
+@login_required
+def patient_donors_report(request):
+    from .models import DonorWorkflow
+    
+    # Mock data for Patient Donors Report
+    
+    # Top Table: Patient Donors Summary
+    patient_donors = [
+        {'mrn': '112889', 'name': 'Nasruddin Mohammed Mahmoud', 'name_ar': 'نصرالدين محمد محمود', 'count': 4, 'date': '31/01/2026', 'nature': 'Whole Blood', 'units_count': 1, 'units_volume': '450 ML'},
+        {'mrn': '112006', 'name': 'Ali Hassan Shamshamieh', 'name_ar': 'علي حسن شمشمية', 'count': 1, 'date': '29/01/2026', 'nature': 'Whole Blood', 'units_count': 1, 'units_volume': '400 ML'},
+        {'mrn': '567883', 'name': 'Zahid Abdulhamid Musa', 'name_ar': 'زاهد عبدالحميد موسى', 'count': 3, 'date': '06/01/2026', 'nature': 'Whole Blood', 'units_count': 1, 'units_volume': '450 ML'},
+        {'mrn': '567883', 'name': 'Zahid Abdulhamid Musa', 'name_ar': 'زاهد عبدالحميد موسى', 'count': 1, 'date': '04/01/2026', 'nature': 'Apheresis Platelets', 'units_count': 10, 'units_volume': '250 ML'},
+        {'mrn': '1084511', 'name': 'Bilqis - Ahmad', 'name_ar': 'بلقيس - احمد', 'count': 3, 'date': '31/01/2026', 'nature': 'Whole Blood', 'units_count': 1, 'units_volume': '450 ML'},
+        {'mrn': '112889', 'name': 'Nasruddin Mohammed Mahmoud', 'name_ar': 'نصرالدين محمد محمود', 'count': 3, 'date': '29/01/2026', 'nature': 'Whole Blood', 'units_count': 1, 'units_volume': '450 ML'},
+        {'mrn': '1644026', 'name': 'Maryam Muslih Alshamman', 'name_ar': 'مريم مصلح الشمراني', 'count': 1, 'date': '29/01/2026', 'nature': 'Whole Blood', 'units_count': 1, 'units_volume': '450 ML'},
+        {'mrn': '1084511', 'name': 'Bilqis - Ahmad', 'name_ar': 'بلقيس - احمد', 'count': 5, 'date': '26/01/2026', 'nature': 'Whole Blood', 'units_count': 1, 'units_volume': '450 ML'},
+        {'mrn': '112889', 'name': 'Nasruddin Mohammed Mahmoud', 'name_ar': 'نصرالدين محمد محمود', 'count': 1, 'date': '28/01/2026', 'nature': 'Whole Blood', 'units_count': 1, 'units_volume': '450 ML'},
+        {'mrn': '112889', 'name': 'Nasruddin Mohammed Mahmoud', 'name_ar': 'نصرالدين محمد محمود', 'count': 3, 'date': '28/01/2026', 'nature': 'Apheresis Platelets', 'units_count': 13, 'units_volume': '418 ML'},
+    ]
+
+    # Bottom Table: Patient Blood Units Received
+    blood_units = [
+        {'req_no': '16', 'created_date': '14/10/2025', 'created_by': 'shameel', 'name': 'SHEEJA K - 15870', 'comp_type': 'PRBC', 'volume': 354, 'partial': 'x', 'unit_no': '0000539', 'bg': 'O Positive', 'donation_code': '0024-2575'},
+        {'req_no': '19', 'created_date': '15/10/2025', 'created_by': 'falam', 'name': 'nisha das - 11764', 'comp_type': 'PRBC', 'volume': 144, 'partial': 'x', 'unit_no': '0000573', 'bg': 'O Positive', 'donation_code': '0024-2514'},
+        {'req_no': '23', 'created_date': '18/10/2025', 'created_by': 'falam', 'name': 'ASWATHI UNNIKRISHNAN - 11884', 'comp_type': 'PRBC', 'volume': 310, 'partial': 'x', 'unit_no': '0000518', 'bg': 'O Positive', 'donation_code': '0021-2550'},
+        {'req_no': '28', 'created_date': '21/10/2025', 'created_by': 'falam', 'name': 'JOIS - 11241', 'comp_type': 'PRBC', 'volume': 50, 'partial': 'correct', 'unit_no': '0000677', 'bg': 'O Positive', 'donation_code': '0021-2610'},
+        {'req_no': '29', 'created_date': '23/10/2025', 'created_by': 'falam', 'name': 'RJR TARENO - 1944', 'comp_type': 'APHERESIS', 'volume': 200, 'partial': 'correct', 'unit_no': '0000683', 'bg': 'A Positive', 'donation_code': 'SCP21-136'},
+        {'req_no': '36', 'created_date': '24/10/2025', 'created_by': 'AHMED', 'name': 'SISI MOL.L - 11394', 'comp_type': 'PLAT PC', 'volume': 55, 'partial': 'correct', 'unit_no': '0000635', 'bg': 'A Positive', 'donation_code': '0021-2571'},
+        {'req_no': '39', 'created_date': '24/10/2025', 'created_by': 'AHMED', 'name': 'SHYAMOL - 11571', 'comp_type': 'PRBC', 'volume': 150, 'partial': 'correct', 'unit_no': '0000433', 'bg': 'AB Positive', 'donation_code': '0024-2554'},
+        {'req_no': '42', 'created_date': '26/10/2025', 'created_by': 'ABDULMALIK', 'name': 'revathi - 11850', 'comp_type': 'PRBC', 'volume': 100, 'partial': 'correct', 'unit_no': '0000812', 'bg': 'O Negative', 'donation_code': '0021-2654'},
+        {'req_no': '46', 'created_date': '28/10/2025', 'created_by': 'FAISAL', 'name': 'shinjusibin - 2072', 'comp_type': 'PRBC', 'volume': 313, 'partial': 'x', 'unit_no': '0000780', 'bg': 'O Positive', 'donation_code': '0021-2628'},
+        {'req_no': '48', 'created_date': '29/10/2025', 'created_by': 'FAISAL', 'name': 'LIZNA PEGGY - 7979', 'comp_type': 'APHERESIS', 'volume': 132, 'partial': 'correct', 'unit_no': '0000815', 'bg': 'O Positive', 'donation_code': 'SCP21-138'},
+    ]
+
+    return render(request, 'reports/patient_donors_report.html', {
+        'patient_donors': patient_donors,
+        'blood_units': blood_units
+    })
+
+@login_required
+def pending_verification(request):
+    from .models import DonorWorkflow
+    
+    # We will fetch 'COMPLETED' flows to act as source for 'Pending Verification'
+    # In a real app, this would be Component.objects.filter(status='PENDING_VERIFICATION')
+    completed_flows = DonorWorkflow.objects.filter(
+        status=DonorWorkflow.Step.COMPLETED
+    ).select_related('donor').order_by('-updated_at')
+    
+    pending_verification_items = []
+    # Mock some varying component types based on ID
+    components = ['PRBC', 'FFP', 'APHERESIS', 'PLT']
+    
+    for i, wf in enumerate(completed_flows):
+        pending_verification_items.append({
+            'workflow': wf,
+            'unit_number': f"000513{83 + i}",
+            'component_type': components[i % 4],
+            'volume_ml': 340 if components[i % 4] == 'PRBC' else 200,
+            'blood_group': wf.donor.blood_group,
+            'created_at': wf.updated_at
+        })
+
+    return render(request, 'reports/pending_verification.html', {
+        'pending_verification': pending_verification_items
+    })
+
+@login_required
+def disposition_to_store(request):
+    from .models import DonorWorkflow
+    from datetime import timedelta
+    from django.utils import timezone
+    
+    # Mock data source: Completed workflows
+    completed_flows = DonorWorkflow.objects.filter(
+        status=DonorWorkflow.Step.COMPLETED
+    ).select_related('donor').order_by('-updated_at')
+    
+    components_list = []
+    comp_types = ['PLAT_PC', 'FFP', 'PRBC', 'APHERESIS']
+    
+    for i, wf in enumerate(completed_flows):
+        c_type = comp_types[i % 4]
+        
+        # Calculate expiry based on component type
+        if c_type in ['PLAT_PC', 'PLT', 'APHERESIS']:
+            expire_days = 5
+            volume = 50 if c_type == 'PLAT_PC' else 250
+        elif c_type == 'FFP':
+            expire_days = 365
+            volume = 173
+        else: # PRBC
+            expire_days = 42
+            volume = 300
+            
+        components_list.append({
+            'id': 51275 - i,
+            'donation_code': wf.blood_draw.bag_serial_number if hasattr(wf, 'blood_draw') else f"H10772600033{i}",
+            'component_type': c_type,
+            'blood_group': wf.donor.blood_group,
+            'volume': volume,
+            'expire_date': timezone.now() + timedelta(days=expire_days),
+            'created_at': wf.updated_at
+        })
+
+    return render(request, 'reports/disposition_to_store.html', {
+        'components': components_list
+    })
+
+@login_required
+def store_report(request):
+    # Mock aggregation for Store Report
+    # Real implementation would use: Component.objects.values('blood_group', 'component_type').annotate(qty=Count('id'))
+    
+    blood_groups = ['O+', 'O-', 'A+', 'A-', 'B+', 'B-', 'AB+', 'AB-']
+    component_types = [
+        {'code': 'PRBC', 'color': 'red'},
+        {'code': 'FFP', 'color': 'blue'},
+        {'code': 'Cryoprecipitate', 'color': 'slate'},
+        {'code': 'APHERESIS', 'color': 'amber'}
+    ]
+    
+    store_items = []
+    
+    # Deterministic mock generation
+    import random
+    random.seed(42) # Fixed seed for consistent UI
+    
+    for c_type in component_types:
+        for bg in blood_groups:
+            # Random quantity between 0 and 300, weighted for realism
+            qty = random.randint(0, 300)
+            if qty > 0:
+                store_items.append({
+                    'blood_group': bg,
+                    'component_type': c_type['code'],
+                    'qty': qty,
+                    'badge_color': c_type['color']
+                })
+                
+    # Initial Filter Logic (Mock)
+    req_type = request.GET.get('component_type')
+    req_bg = request.GET.get('blood_group')
+    
+    if req_type and req_type != 'All':
+        store_items = [x for x in store_items if x['component_type'] == req_type]
+        
+    if req_bg and req_bg != 'All':
+        store_items = [x for x in store_items if x['blood_group'] == req_bg]
+
+    return render(request, 'reports/store.html', {
+        'store_items': store_items,
+        'current_filters': {
+            'component_type': req_type,
+            'blood_group': req_bg
+        }
+    })
+
+@login_required
+def component_details(request):
+    # Mock data for Component Details Report
+    from datetime import timedelta
+    from django.utils import timezone
+    import random
+    
+    components = []
+    comp_types = ['PLAT_PC', 'FFP', 'PRBC', 'APHERESIS']
+    bg_types = ['O+', 'A+', 'B+', 'AB+']
+    
+    for i in range(10):
+        c_type = comp_types[i % 4]
+        bg = bg_types[i % 4]
+        
+        status = 'Discarded' if i % 2 == 0 else 'Stock'
+        is_discarded = (status == 'Discarded')
+        
+        components.append({
+            'index': 51625 - i,
+            'donation_code': f"H10772600045{i}",
+            'source': 'SMC',
+            'component_type': c_type,
+            'blood_group': bg,
+            'qty': 1,
+            'volume': 30 if c_type == 'PLAT_PC' else (150 if c_type == 'FFP' else 300),
+            'volume_issued': '-',
+            'rr': '30 : 70' if c_type == 'PLAT_PC' else ('150 : 220' if c_type == 'FFP' else '-'),
+            'expire_date': timezone.now() + timedelta(days=365 if c_type == 'FFP' else 5),
+            'temperature': '20-24' if c_type == 'PLAT_PC' else ('Less than or equal -18' if c_type == 'FFP' else '2-6'),
+            'location': '', 
+            'status': status,
+            'verification': 'Discarded' if is_discarded else 'Verified',
+            'verification_by': 'F-AYED',
+            'verification_date': '31/01/2026 11:19 PM',
+            'done_by': 'Faisal Ayed Alotaibi',
+            'done_date': '31/01/2026 11:19 PM',
+            'modified_by': '',
+            'modified_date': '',
+            'note': 'Lipemic' if is_discarded else ''
+        })
+        
+    return render(request, 'reports/component_details.html', {
+        'components': components
+    })
+
+@login_required
+def discarded_units(request):
+    # Mock data for Discarded Units Report
+    from datetime import timedelta
+    from django.utils import timezone
+    import random
+    
+    discarded_comp = []
+    comp_types = ['PLAT_PC', 'PLAT_PC', 'PLAT_PC', 'PLAT_PC']
+    blood_groups = ['O+', 'B+', 'AB+', 'O-']
+    
+    for i in range(4):
+        c_type = comp_types[i]
+        bg = blood_groups[i]
+        
+        discarded_comp.append({
+            'index': 51413 - (i * 5),
+            'donation_code': f"H10772600037{5+i}",
+            'source': 'SMC',
+            'component_type': c_type,
+            'blood_group': bg,
+            'qty': 1,
+            'volume': 54 - i,
+            'volume_issued': '-',
+            'rr': '30 : 70',
+            'expire_date': '01/02/2026',
+            'temperature': '20-24',
+            'location': '', 
+            'status': 'Discarded',
+            'discarded_by': 'Khalid Abdullah Alanazi',
+            'discarded_date': '29/01/2026 05:39 AM',
+            'discarded_note': 'Expired',
+            'verified_1': True,
+            'verified_1_by': 'abu-zahir',
+            'verified_1_date': '29/01/2026 05:39 AM',
+            'discarded_verify': True,
+            'discarded_verify_by': 'kh-alanazi',
+            'discarded_verify_date': '01/02/2026 02:42 PM',
+            'done_by': 'Mazen Ayedh Alrumaili',
+            'done_date': '27/01/2026 06:12 PM',
+            'modified_by': '',
+            'modified_date': ''
+        })
+        
+    return render(request, 'reports/discarded_units.html', {
+        'components': discarded_comp
+    })
+
+@login_required
+def expired_units(request):
+    # Mock data for Expired Units Report
+    from datetime import timedelta
+    from django.utils import timezone
+    
+    components = [
+        {'id': 51431, 'code': 'H107726000398', 'type': 'PLAT_PC', 'bg': 'A+', 'qty': 1, 'vol': 48, 'rr': '30 : 70', 'exp': '01/02/2026', 'temp': '20-24', 'status_date': '01/02/2026 04:10 PM', 'note': 'Auto Expired by system Since Expired Date On Feb 1 2026', 'ver_by': 'abu-zahir', 'ver_date': '28/01/2026 05:38 AM', 'done_by': 'Mazen Ayedh Alrunaili', 'done_date': '27/01/2026 09:31 PM'},
+        {'id': 51416, 'code': 'H107726000396', 'type': 'PLAT_PC', 'bg': 'O+', 'qty': 1, 'vol': 50, 'rr': '30 : 70', 'exp': '01/02/2026', 'temp': '20-24', 'status_date': '01/02/2026 03:55 PM', 'note': 'Auto Expired by system Since Expired Date On Feb 1 2026', 'ver_by': 'abu-zahir', 'ver_date': '28/01/2026 05:38 AM', 'done_by': 'Mazen Ayedh Alrunaili', 'done_date': '27/01/2026 09:20 PM'},
+        {'id': 48776, 'code': 'H107725004311', 'type': 'PRBC', 'bg': 'O+', 'qty': 1, 'vol': 335, 'rr': '250 : 400', 'exp': '29/01/2026', 'temp': '1-6', 'status_date': '29/01/2026 01:45 PM', 'note': 'Auto Expired by system Since Expired Date On Jan 29 2026', 'ver_by': 'F-AYED', 'ver_date': '19/12/2025 02:10 AM', 'done_by': 'Khalid Abdullah Alanazi', 'done_date': '18/12/2025 05:10 PM'},
+        {'id': 37606, 'code': 'H107725000172', 'type': 'FFP', 'bg': 'A+', 'qty': 1, 'vol': 150, 'rr': '150 : 220', 'exp': '14/01/2026', 'temp': 'Less than or equal -18', 'status_date': '14/01/2026 11:35 AM', 'note': 'Auto Expired by system Since Expired Date On Jan 14 2026', 'ver_by': 'abu-zahir', 'ver_date': '15/01/2025 03:44 AM', 'done_by': 'Raed Hammad Alotaibi', 'done_date': '15/01/2025 12:00 AM'},
+        {'id': 46917, 'code': 'H107725003326', 'type': 'Thawed_FFP', 'bg': 'O+', 'qty': 1, 'vol': 161, 'rr': '140 : 260', 'exp': '07/10/2025', 'temp': '', 'status_date': '29/10/2025 07:40 PM', 'note': 'Auto Expired by system Since Expired Date On Dec 29 2025', 'ver_by': 'abu-zahir', 'ver_date': '07/10/2025 04:01 AM', 'done_by': 'Mazen Ayedh Alrunaili', 'done_date': '06/10/2025 11:21 PM'}
+    ]
+
+    return render(request, 'reports/expired_units.html', {
+        'components': components
+    })
+    
+@login_required
+def cryo_units(request):
+    # Mock data for Cryo Units Report
+    from datetime import timedelta
+    from django.utils import timezone
+    
+    components = [
+        {'id': 51160, 'code': 'H107726000272', 'type': 'Cryo', 'bg': 'AB+', 'qty': 1, 'vol': 31, 'rr': '15 : 35', 'temp': 'Less than or equal -18', 'loc': 'Any', 'status': 'Inventory', 'status_date': '20/01/2026 05:48 PM', 'status_by': 'Mazen Ayedh Alrunaili', 'note': 'Converted To Cryo by mazen-s on 1/20/2026 5:48:19 PM', 'ver_by': 'Oalmutairi', 'ver_date': '19/01/2026 02:45 AM', 'done_by': 'Meshari Ali Alshahrani', 'done_date': '16/01/2026 09:38 PM', 'action_btn': 'Pending Verify'},
+        {'id': 51133, 'code': 'H107726000271', 'type': 'Cryo', 'bg': 'O+', 'qty': 1, 'vol': 28, 'rr': '15 : 35', 'temp': 'Less than or equal -18', 'loc': 'Any', 'status': 'Inventory', 'status_date': '20/01/2026 05:20 PM', 'status_by': 'Mazen Ayedh Alrunaili', 'note': 'Converted To Cryo by mazen-s on 1/20/2026 5:20:26 PM', 'ver_by': 'Oalmutairi', 'ver_date': '19/01/2026 02:45 AM', 'done_by': 'Meshari Ali Alshahrani', 'done_date': '16/01/2026 09:26 PM', 'action_btn': 'Pending Verify'},
+        {'id': 51108, 'code': 'H107726000304', 'type': 'Cryo', 'bg': 'O-', 'qty': 1, 'vol': 32, 'rr': '15 : 35', 'temp': 'Less than or equal -18', 'loc': 'Any', 'status': 'Inventory', 'status_date': '20/01/2026 04:10 PM', 'status_by': 'Faisal Ayed Alotaibi', 'note': 'Converted To Cryo by F-AYED on 1/20/2026 4:10:18 PM', 'ver_by': 'Oalmutairi', 'ver_date': '19/01/2026 02:45 AM', 'done_by': 'Abu humaira Zahir Gul', 'done_date': '18/01/2026 09:12 PM', 'action_btn': 'Pending Verify'},
+        {'id': 51058, 'code': 'H107726000256', 'type': 'Cryo', 'bg': 'O+', 'qty': 1, 'vol': 34, 'rr': '15 : 35', 'temp': 'Less than or equal -18', 'loc': 'Any', 'status': 'Inventory', 'status_date': '20/01/2026 06:13 PM', 'status_by': 'Mazen Ayedh Alrunaili', 'note': 'Converted To Cryo by mazen-s on 1/20/2026 6:13:06 PM', 'ver_by': 'Oalmutairi', 'ver_date': '16/01/2026 12:40 AM', 'done_by': 'Meshari Ali Alshahrani', 'done_date': '15/01/2026 07:12 PM', 'action_btn': 'Pending Verify'},
+        {'id': 50971, 'code': 'H107726000231', 'type': 'Cryo', 'bg': 'O+', 'qty': 1, 'vol': 35, 'rr': '15 : 35', 'temp': 'Less than or equal -18', 'loc': 'Any', 'status': 'Inventory', 'status_date': '20/01/2026 05:01 PM', 'status_by': 'Mazen Ayedh Alrunaili', 'note': 'Converted To Cryo by mazen-s on 1/20/2026 5:01:49 PM', 'ver_by': 'R-ALOTAIBI', 'ver_date': '15/01/2026 12:32 AM', 'done_by': 'Meshari Ali Alshahrani', 'done_date': '14/01/2026 08:26 PM', 'action_btn': 'Pending Verify'},
+        {'id': 50797, 'code': 'H107726000176', 'type': 'Cryo', 'bg': 'O+', 'qty': 1, 'vol': 31, 'rr': '15 : 35', 'temp': 'Less than or equal -18', 'loc': 'Any', 'status': 'Inventory', 'status_date': '20/01/2026 05:00 PM', 'status_by': 'Mazen Ayedh Alrunaili', 'note': 'Converted To Cryo by mazen-s on 1/20/2026 5:00:02 PM', 'ver_by': 'R-ALOTAIBI', 'ver_date': '12/01/2026 03:06 AM', 'done_by': 'Faisal Ayed Alotaibi', 'done_date': '13/01/2026 08:14 PM', 'action_btn': 'Pending Verify'},
+        {'id': 50781, 'code': 'H107726000160', 'type': 'Cryo', 'bg': 'A+', 'qty': 1, 'vol': 33, 'vol_issued': 33, 'rr': '15 : 35', 'temp': 'Less than or equal -18', 'loc': '', 'status': 'Issued', 'status_date': '22/01/2026 11:22 PM', 'note': '', 'ver_by': 'R-ALOTAIBI', 'ver_date': '11/01/2026 02:02 AM', 'done_by': 'Faisal Ayed Alotaibi', 'done_date': '10/01/2026 08:47 PM', 'action_btn': 'Pending Review'}
+    ]
+
+    return render(request, 'reports/cryo_units.html', {
+        'components': components
+    })
+
+@login_required
+def component_culture(request):
+    # Mock data for Component Culture Report
+    from datetime import timedelta
+    from django.utils import timezone
+    
+    components = [
+        {'id': '26-2493', 'type': 'Platelet_Culture', 'aero_num': 'SFYSWRNM', 'anaero_num': 'NR952GJ0', 'aero_lot': '20250918-Q75', 'anaero_lot': '0004063960', 'status': 'FirstResult_Reviewed', 'status_date': '31/01/2026 05:52 AM', 'status_by': 'safa.ali', 'res1': 'No Growth', 'res2': 'N/A', 'done_by': 'mazen-s', 'done_date': '29/01/2026 05:51 PM', 'mod_by': 'safa.ali', 'mod_date': '31/01/2026 08:45 PM'},
+        {'id': '26-2492', 'type': 'Platelet_Culture', 'aero_num': 'SFYSWRNL', 'anaero_num': 'NR952GJP', 'aero_lot': '20250918-Q75', 'anaero_lot': '0004063960', 'status': 'FirstResult_Reviewed', 'status_date': '31/01/2026 05:52 AM', 'status_by': 'safa.ali', 'res1': 'No Growth', 'res2': 'N/A', 'done_by': 'mazen-s', 'done_date': '29/01/2026 05:22 PM', 'mod_by': 'safa.ali', 'mod_date': '29/01/2026 05:42 PM'},
+        {'id': '26-2491', 'type': 'Platelet_Culture', 'aero_num': 'SFYSWRMY', 'anaero_num': 'NR951S22', 'aero_lot': '20250918-Q75', 'anaero_lot': '0004063980', 'status': 'FirstResult_Reviewed', 'status_date': '31/01/2026 05:52 AM', 'status_by': 'safa.ali', 'res1': 'No Growth', 'res2': 'N/A', 'done_by': 'mazen-s', 'done_date': '29/01/2026 05:18 PM', 'mod_by': 'safa.ali', 'mod_date': '29/01/2026 05:41 PM'},
+        {'id': '26-2490', 'type': 'Platelet_Culture', 'aero_num': 'SFYSWRNT', 'anaero_num': 'NR951S72', 'aero_lot': '20250918-Q75', 'anaero_lot': '0004063960', 'status': 'FirstResult_Reviewed', 'status_date': '31/01/2026 05:52 AM', 'status_by': 'safa.ali', 'res1': 'No Growth', 'res2': 'N/A', 'done_by': 'mazen-s', 'done_date': '29/01/2026 05:14 PM', 'mod_by': 'safa.ali', 'mod_date': '29/01/2026 05:39 PM'},
+        {'id': '26-2489', 'type': 'Platelet_Culture', 'aero_num': 'ARFF7ZMR', 'anaero_num': 'NR951S1K', 'aero_lot': '0103573026596...', 'anaero_lot': '0103573026596...', 'status': 'FirstResult_Reviewed', 'status_date': '30/01/2026 08:59 AM', 'status_by': 'rabab-h', 'res1': 'No Growth', 'res2': 'N/A', 'done_by': 'kh-alanazi', 'done_date': '28/01/2026 03:59 PM', 'mod_by': 'shakir', 'mod_date': '28/01/2026 08:37 PM'},
+        {'id': '26-2488', 'type': 'Platelet_Culture', 'aero_num': 'ARFF7ZZM', 'anaero_num': 'NR951S0G', 'aero_lot': '0103573026596...', 'anaero_lot': '0103573026596...', 'status': 'FirstResult_Reviewed', 'status_date': '30/01/2026 08:59 AM', 'status_by': 'rabab-h', 'res1': 'No Growth', 'res2': 'N/A', 'done_by': 'F-AYED', 'done_date': '28/01/2026 03:57 PM', 'mod_by': 'shakir', 'mod_date': '28/01/2026 08:36 PM'},
+        {'id': '26-2487', 'type': 'Platelet_Culture', 'aero_num': 'ARFF7ZYM', 'anaero_num': 'NR952GJX', 'aero_lot': 'ARFF7ZYM', 'anaero_lot': 'NR952GJX', 'status': 'FirstResult_Reviewed', 'status_date': '30/01/2026 08:59 AM', 'status_by': 'rabab-h', 'res1': 'No Growth', 'res2': 'N/A', 'done_by': 'F-AYED', 'done_date': '28/01/2026 03:52 PM', 'mod_by': 'shakir', 'mod_date': '28/01/2026 08:33 PM'},
+        {'id': '26-2486', 'type': 'Platelet_Culture', 'aero_num': 'ARFF7ZZR', 'anaero_num': 'NR951S2B', 'aero_lot': '0103573026596...', 'anaero_lot': '0103573026596...', 'status': 'FirstResult_Reviewed', 'status_date': '30/01/2026 08:59 AM', 'status_by': 'rabab-h', 'res1': 'No Growth', 'res2': 'N/A', 'done_by': 'F-AYED', 'done_date': '28/01/2026 03:49 PM', 'mod_by': 'shakir', 'mod_date': '28/01/2026 08:30 PM'},
+        {'id': '26-2485', 'type': 'Platelet_Culture', 'aero_num': 'SFYSWRN6', 'anaero_num': 'NR951S1Z', 'aero_lot': '20250918-Q75', 'anaero_lot': '0004062960', 'status': 'FirstResult_Reviewed', 'status_date': '29/01/2026 01:52 AM', 'status_by': 'Elmoatasim', 'res1': 'No Growth', 'res2': 'N/A', 'done_by': 'kh-alanazi', 'done_date': '27/01/2026 02:50 PM', 'mod_by': 'shakir', 'mod_date': '27/01/2026 08:46 PM'},
+    ]
+
+    return render(request, 'reports/component_culture.html', {
+        'components': components
+    })
+
+@login_required
+def component_culture_view(request, request_id):
+    # Mock data for Component Culture Detail View
+    details = {
+        'id': request_id,
+        'date': '29 January 2026 05:31 PM',
+        'type': 'Platelet_Culture',
+        'aero_num': 'SFYSWRNM',
+        'anaero_num': 'NR952GJ0',
+        'aero_lot': '20250918-Q75',
+        'anaero_lot': '0004063960',
+        'aero_exp': '17/03/2027',
+        'anaero_exp': '25/05/2026',
+        'done_by': 'mazen-s',
+        'done_date': '29/01/2026 05:31 PM',
+        'mod_by': 'safa.ali',
+        'mod_date': '29/01/2026 08:43 PM',
+        'status': 'FirstResult_Reviewed',
+        'status_by': 'safa.ali',
+        'status_date': '31/01/2026 05:52 AM',
+        'rec_by': 'safa.ali',
+        'rec_date': '29/01/2026 06:42 PM',
+        'units': [
+            {'code': 'H107726000422', 'unit_no': '00051615', 'type': 'PLAT_PC', 'col_date': '28/01/2026 02:55 PM', 'exp_date': '02/02/2026 02:55 PM', 'barcode': '00051615'},
+            {'code': 'H107726000416', 'unit_no': '00051606', 'type': 'PLAT_PC', 'col_date': '28/01/2026 02:27 PM', 'exp_date': '02/02/2026 02:27 PM', 'barcode': '00051606'},
+            {'code': 'H107726000404', 'unit_no': '00051618', 'type': 'PLAT_PC', 'col_date': '28/01/2026 01:18 PM', 'exp_date': '02/02/2026 01:18 PM', 'barcode': '00051618'},
+            {'code': 'H107726000423', 'unit_no': '00051612', 'type': 'PLAT_PC', 'col_date': '28/01/2026 02:55 PM', 'exp_date': '02/02/2026 02:55 PM', 'barcode': '00051612'},
+            {'code': 'H107726000415', 'unit_no': '00051572', 'type': 'APHERESIS', 'col_date': '28/01/2026 02:55 PM', 'exp_date': '02/02/2026 02:55 PM', 'barcode': '00051572'},
+        ]
+    }
+    return render(request, 'reports/component_culture_view.html', {
+        'req': details
+    })
+
+@login_required
+def component_culture_pending(request):
+    # Mock data for Pending Lists
+    # ... (Keep existing implementation) ...
+    # 1. Pending First Result [48Hours]
+    pending_first = [
+        {'id': '26-2503', 'aero_num': 'SFYSWROA', 'anaero_num': 'NR951S1Q', 'aero_lot': '20250918-Q75', 'anaero_lot': '0004062960', 'status': 'Received', 'status_date': '01/02/2026 01:21 PM', 'status_by': 'mazen-s', 'created_by': 'mazen-s', 'created_date': '01/02/2026 01:21 PM', 'duration': '34850'},
+        {'id': '24-1988', 'aero_num': 'NRTYOA54', 'anaero_num': '00041003422', 'aero_lot': '0103573026596...', 'anaero_lot': 'NR951S1Q', 'status': 'Received', 'status_date': '24/02/2024 09:37 PM', 'status_by': 'Dr.Ali', 'created_by': 'Dr.Ali', 'created_date': '24/02/2024 09:37 PM', 'duration': '14261'},
+    ]
+
+    # 2. Pending First Result Review [48Hours]
+    pending_first_review = [
+        {'id': '25-2342', 'aero_num': 'PRZJJVSC', 'anaero_num': 'NRTYOCJS', 'aero_lot': '0004100332', 'anaero_lot': '0004051044', 'status': 'FirstResult_Submitted', 'status_date': '27/11/2025 08:40 AM', 'status_by': 'safa.ali', 'created_by': 'noor.ali', 'created_date': '25/11/2025 08:52 AM', 'duration': '1744'},
+        {'id': '25-2348', 'aero_num': 'PRZJJVYK', 'anaero_num': 'NRTYCP12', 'aero_lot': '0004100332', 'anaero_lot': '0004051044', 'status': 'FirstResult_Submitted', 'status_date': '27/11/2025 08:40 AM', 'status_by': 'safa.ali', 'created_by': 'noor.ali', 'created_date': '25/11/2025 03:22 PM', 'duration': '1711'},
+    ]
+
+    # 3. Pending Second Result [5 Days]
+    pending_second = [
+        {'id': '25-2337', 'aero_num': 'ARFF5PZN', 'anaero_num': 'NRTYOCJS', 'aero_lot': '0103573022596...', 'anaero_lot': '0103573026596...', 'status': 'FirstResult_Reviewed', 'status_date': '31/10/2025 03:20 AM', 'status_by': 'b.al-otaibi', 'created_by': 'shabeer', 'created_date': '29/10/2025 04:17 PM', 'duration': '2251'},
+        {'id': '25-2357', 'aero_num': 'NRTYXMSD', 'anaero_num': 'NRTYXNOD', 'aero_lot': '0103573022569...', 'anaero_lot': '0103573025556...', 'status': 'FirstResult_Reviewed', 'status_date': '13/11/2025 03:15 AM', 'status_by': 'eshark', 'created_by': 'rashad.ab', 'created_date': '11/11/2025 04:36 PM', 'duration': '1655'},
+    ]
+
+    # 4. Pending Second Result Review [5 Days]
+    pending_second_review = [
+        {'id': '25-2338', 'aero_num': 'ARFF5PZM', 'anaero_num': 'NRTYOCSZ', 'aero_lot': '0004100422', 'anaero_lot': '0004062844', 'status': 'SecondResult_Submitted', 'status_date': '17/11/2025 02:02 PM', 'status_by': 'RABAB-H', 'created_by': 'i.alyami', 'created_date': '29/10/2025 03:31 PM', 'duration': '1955'},
+        {'id': '25-2346', 'aero_num': 'ARDCNSNP', 'anaero_num': 'NRTWVMCT', 'aero_lot': '0004100160', 'anaero_lot': '0004062860', 'status': 'SecondResult_Submitted', 'status_date': '05/12/2025 04:20 AM', 'status_by': 'safa.ali', 'created_by': 'f-ayed', 'created_date': '03/12/2025 03:10 PM', 'duration': '1417'},
+    ]
+
+    return render(request, 'reports/component_culture_pending.html', {
+        'pending_first': pending_first,
+        'pending_first_review': pending_first_review,
+        'pending_second': pending_second,
+        'pending_second_review': pending_second_review
+    })
+
+@login_required
+def patient_bg_discrepancy(request):
+    # Mock data for Patient BG Discrepancy
+    discrepancies = [
+        {'mrn': '1653614', 'result': '(!)', 'result_date': '01 February 2026 06:33:00 AM'},
+        {'mrn': '1652131', 'result': '(!)', 'result_date': '27 January 2026 11:51:00 PM'},
+    ]
+    return render(request, 'reports/patient_bg_discrepancy.html', {
+        'discrepancies': discrepancies
+    })
+
+@login_required
+def discrepancy_alarms(request):
+    # Mock data for Discrepancy Alarms
+    alarms = [
+        {
+            'site': 'SMC2', 
+            'sample_number': '7669548W', 
+            'patient': '1416905 - Boy Nouf Alaiyed', 
+            'test': '110 - Blood Group', 
+            'new_result': 'O POS', 
+            'last_result': 'A POS', 
+            'created_by': 'system', 
+            'created_at': '08 Feb 2024 06:40 PM'
+        },
+        {
+            'site': 'SMC2', 
+            'sample_number': '7676996W', 
+            'patient': '850089 - Huda Saleh Alzahrani', 
+            'test': '110 - Blood Group', 
+            'new_result': 'B POS', 
+            'last_result': 'AB POS', 
+            'created_by': 'system', 
+            'created_at': '29 Feb 2024 09:40 AM'
+        },
+        {
+            'site': 'SMC2', 
+            'sample_number': '7676996W', 
+            'patient': '850089 - Huda Saleh Alzahrani', 
+            'test': '110 - Blood Group', 
+            'new_result': 'B POS', 
+            'last_result': 'AB POS', 
+            'created_by': 'system', 
+            'created_at': '29 Feb 2024 09:55 AM'
+        },
+        {
+            'site': 'SMC2', 
+            'sample_number': '7676996W', 
+            'patient': '850089 - Huda Saleh Alzahrani', 
+            'test': '110 - Blood Group', 
+            'new_result': 'B POS', 
+            'last_result': 'AB POS', 
+            'created_by': 'system', 
+            'created_at': '29 Feb 2024 09:55 AM'
+        },
+          {
+            'site': 'SMC2', 
+            'sample_number': '7676996W', 
+            'patient': '850089 - Huda Saleh Alzahrani', 
+            'test': '110 - Blood Group', 
+            'new_result': 'B POS', 
+            'last_result': 'AB POS', 
+            'created_by': 'system', 
+            'created_at': '29 Feb 2024 09:55 AM'
+        },
+          {
+            'site': 'SMC2', 
+            'sample_number': '7676996W', 
+            'patient': '850089 - Huda Saleh Alzahrani', 
+            'test': '110 - Blood Group', 
+            'new_result': 'B POS', 
+            'last_result': 'AB POS', 
+            'created_by': 'system', 
+            'created_at': '29 Feb 2024 09:55 AM'
+        },
+          {
+            'site': 'SMC2', 
+            'sample_number': '7676996W', 
+            'patient': '850089 - Huda Saleh Alzahrani', 
+            'test': '110 - Blood Group', 
+            'new_result': 'B POS', 
+            'last_result': 'AB POS', 
+            'created_by': 'system', 
+            'created_at': '29 Feb 2024 09:55 AM'
+        },
+    ]
+    return render(request, 'reports/discrepancy_alarms.html', {
+        'alarms': alarms
+    })
+
+# --- New Reports Module Views ---
+
+@login_required
+def monthly_report(request):
+    # Mock Statistics
+    stats = {
+        'accepted_donors': 409,
+        'accepted_donors_pct': 94.5,
+        'rejected_donors': 24,
+        'rejected_donors_pct': 5.5,
+        'total_applied': 433,
+        'total_reactive_tests': 33,
+        'total_reactive_units': 30,
+        'total_reactive_units_pct': 7.3,
+        'accepted_units': 379,
+        'accepted_units_pct': 92.7,
+        'not_satisfied': 2,
+        'not_satisfied_pct': 1.4,
+        'satisfied': 141,
+        'satisfied_pct': 98.6,
+        'survey_donors': 143,
+        'survey_donors_pct': 35
+    }
+
+    # Mock Donors Data
+    donors_data = [
+        {'nature': 'whole blood', 'reason': 'Volunteer', 'status': 'New', 'total': 1},
+        {'nature': 'whole blood', 'reason': 'Volunteer', 'status': 'Accepted', 'total': 228},
+        {'nature': 'whole blood', 'reason': 'Volunteer', 'status': 'Rejected', 'total': 8},
+        {'nature': 'whole blood', 'reason': 'Volunteer', 'status': 'Questionair Failed', 'total': 1},
+        {'nature': 'whole blood', 'reason': 'Volunteer', 'status': 'WithDraw Blood Completed', 'total': 52},
+        {'nature': 'whole blood', 'reason': 'Volunteer', 'status': 'Vital Signs Failed', 'total': 5},
+        {'nature': 'whole blood', 'reason': 'Volunteer', 'status': 'WithDraw_Blood_Failed', 'total': 3},
+        {'nature': 'whole blood', 'reason': 'For Patient', 'status': 'Accepted', 'total': 92},
+        {'nature': 'whole blood', 'reason': 'For Patient', 'status': 'Questionair Failed', 'total': 1},
+        {'nature': 'whole blood', 'reason': 'For Patient', 'status': 'WithDraw Blood Completed', 'total': 26},
+        {'nature': 'whole blood', 'reason': 'For Patient', 'status': 'Vital Signs Failed', 'total': 3},
+        {'nature': 'whole blood', 'reason': 'For Patient', 'status': 'WithDraw_Blood_Failed', 'total': 2},
+        {'nature': 'Apheresis Platelets', 'reason': 'Volunteer', 'status': 'Accepted', 'total': 1},
+        {'nature': 'Apheresis Platelets', 'reason': 'For Patient', 'status': 'Accepted', 'total': 8},
+    ]
+
+    # Mock Reactive Units Data
+    reactive_data = [
+        {'nature': 'whole blood', 'code': '2027', 'test': 'BB-ANTI HBV-CORE TOTAL', 'total': 25},
+        {'nature': 'whole blood', 'code': '2028', 'test': 'BB-ANTI HCV', 'total': 3},
+        {'nature': 'whole blood', 'code': '2029', 'test': 'BB-HIV p24 Ag / HIV-1&2 Ab (Combined Assay)', 'total': 2},
+        {'nature': 'whole blood', 'code': '2031', 'test': 'BB-SYPHILIS', 'total': 1},
+        {'nature': 'whole blood', 'code': '2040', 'test': 'BB-ANTI-HBs', 'total': 2},
+    ]
+
+    # Mock Discarded Summary Data
+    discarded_summary = [
+        {'name': 'PRBC', 'status': 'Discarded', 'total': 44},
+        {'name': 'Plat PC', 'status': 'Discarded', 'total': 295},
+        {'name': 'FFP', 'status': 'Discarded', 'total': 256},
+        {'name': 'APHERESIS', 'status': 'Discarded', 'total': 3},
+        {'name': 'Plat PC', 'status': 'Expired', 'total': 1},
+    ]
+
+    # Mock Discarded Details Data (Partial based on screenshot)
+    discarded_details = [
+        {'name': 'PRBC', 'status': 'Clotted', 'total': 3},
+        {'name': 'PRBC', 'status': 'Broken', 'total': 2},
+        {'name': 'PRBC', 'status': 'Leakage', 'total': 17},
+        {'name': 'PRBC', 'status': 'Air/Bubble', 'total': 6},
+        {'name': 'PRBC', 'status': 'Expired', 'total': 2},
+        {'name': 'Plat PC', 'status': 'Clotted', 'total': 2},
+        {'name': 'Plat PC', 'status': 'Broken', 'total': 4},
+        {'name': 'Plat PC', 'status': 'Bloody', 'total': 31},
+        {'name': 'Plat PC', 'status': 'Lipemic', 'total': 28},
+        {'name': 'Plat PC', 'status': 'Yellowish', 'total': 8},
+        {'name': 'FFP', 'status': 'Clotted', 'total': 2},
+        {'name': 'FFP', 'status': 'Broken', 'total': 3},
+        {'name': 'FFP', 'status': 'Bloody', 'total': 12},
+        {'name': 'FFP', 'status': 'Lipemic', 'total': 25},
+        {'name': 'APHERESIS', 'status': 'Expired', 'total': 3},
+        {'name': 'Plat PC', 'status': 'Expired', 'total': 1},
+    ]
+
+    # Mock Adverse Reaction Data
+    adverse_summary = [
+        {'type': 'MILD', 'total': 3},
+        {'type': 'MODERATE', 'total': 1},
+    ]
+
+    adverse_details = [
+        {'code': '0023082', 'name': 'IBRAHIM NASSER ALOMRANI', 'id': '1114598780', 'date': '2026-01-12T13:24:09.95'},
+        {'code': '0023131', 'name': 'IBRAHIM MOHAMMED MADKHALI', 'id': '1133207017', 'date': '2026-01-15T11:53:49.613'},
+        {'code': 'H107726000246', 'name': 'ALI ABDULRAHMAN ALKUWAYLIT', 'id': '1089381709', 'date': '2026-01-15T12:25:28.66'},
+        {'code': 'H107726000395', 'name': 'MOHAMMED ALABD ALTAMIMI', 'id': '2196231188', 'date': '2026-01-27T14:16:11.49'},
+    ]
+
+    # Mock Donor Satisfaction Data
+    satisfaction_summary = [
+        {'question': 'Are you satisfied with the waiting time to finish the donation process?', 'vd': 2, 'd': 0, 'ok': 8, 's': 27, 'vs': 106},
+        {'question': 'Are you comfortable during blood donation?', 'vd': 2, 'd': 1, 'ok': 6, 's': 20, 'vs': 111},
+        {'question': 'Are you satisfied with the blood bank staff attending your needs and inquiries?', 'vd': 3, 'd': 0, 'ok': 8, 's': 15, 'vs': 116},
+        {'question': 'Are you satisfied with the interview and information provided for your blood donation?', 'vd': 2, 'd': 0, 'ok': 8, 's': 33, 'vs': 98},
+    ]
+
+    dissatisfied_donors = [
+        {'code': 'H107726000072', 'result': '0/4'},
+        {'code': 'H107726000361', 'result': '0/4'},
+    ]
+
+    # Mock Acknowledgement Data
+    acknowledgment_summary = [
+        {'site': 'SMC1', 'component': 'PRBC', 'status': 'Not Acknowledged', 'count': 179, 'pct': '26.09% of Total PRBC orders : 686'},
+        {'site': 'SMC1', 'component': 'PRBC', 'status': 'Acknowledged', 'count': 408, 'pct': '73.91% of Total PRBC orders : 686'},
+        {'site': 'SMC1', 'component': 'Plat PC', 'status': 'Not Acknowledged', 'count': 10, 'pct': '18.52% of Total Plat PC orders : 54'},
+        {'site': 'SMC1', 'component': 'Plat PC', 'status': 'Acknowledged', 'count': 44, 'pct': '81.48% of Total Plat PC orders : 54'},
+        {'site': 'SMC1', 'component': 'FFP', 'status': 'Not Acknowledged', 'count': 13, 'pct': '25.00% of Total FFP orders : 52'},
+        {'site': 'SMC1', 'component': 'FFP', 'status': 'Acknowledged', 'count': 40, 'pct': '75.00% of Total FFP orders : 52'},
+        {'site': 'SMC1', 'component': 'Cryoprecipitate', 'status': 'Not Acknowledged', 'count': 2, 'pct': '40.00% of Total Cryoprecipitate orders : 5'},
+        {'site': 'SMC1', 'component': 'Cryoprecipitate', 'status': 'Acknowledged', 'count': 3, 'pct': '60.00% of Total Cryoprecipitate orders : 5'},
+        {'site': 'SMC2', 'component': 'PRBC', 'status': 'Not Acknowledged', 'count': 64, 'pct': '32.20% of Total PRBC orders : 200'},
+        {'site': 'SMC2', 'component': 'PRBC', 'status': 'Acknowledged', 'count': 136, 'pct': '67.71% of Total PRBC orders : 200'},
+        {'site': 'SMC2', 'component': 'Plat PC', 'status': 'Not Acknowledged', 'count': 6, 'pct': '35.29% of Total Plat PC orders : 17'},
+        {'site': 'SMC2', 'component': 'Plat PC', 'status': 'Acknowledged', 'count': 11, 'pct': '64.71% of Total Plat PC orders : 17'},
+        {'site': 'SMC2', 'component': 'FFP', 'status': 'Not Acknowledged', 'count': 7, 'pct': '33.33% of Total FFP orders : 21'},
+        {'site': 'SMC2', 'component': 'FFP', 'status': 'Acknowledged', 'count': 14, 'pct': '66.67% of Total FFP orders : 21'},
+    ]
+
+    return render(request, 'reports/monthly_report.html', {
+        'stats': stats,
+        'donors_data': donors_data,
+        'reactive_data': reactive_data,
+        'discarded_summary': discarded_summary,
+        'discarded_details': discarded_details,
+        'adverse_summary': adverse_summary,
+        'adverse_details': adverse_details,
+        'satisfaction_summary': satisfaction_summary,
+        'dissatisfied_donors': dissatisfied_donors,
+        'acknowledgment_summary': acknowledgment_summary
+    })
+
+@login_required
+def inventory_checkup(request):
+    """
+    Inventory CheckUp View with mock data.
+    """
+    system_units = [
+        {
+            'id': '38639', 'unit_number': '00038749', 'donation_code': 'H107725000528', 'component_type': 'Cryo', 'blood_group': 'O+', 
+            'qty': 1, 'volume': 33, 'expire_date': 'Pending', 
+            'current_date': '25/08/2025 10:23 PM', 'by_user': 'Abu huraira Zahir Gul', 'note': 'Converted To Cryo by abu-zahr on 6/25/2025 10:23:22 PM',
+            'created_by': 'Mazen Ayash Alruwaili', 'created_date': '11/02/2025 10:00 PM'
+        },
+        {
+            'id': '38675', 'unit_number': '00038785', 'donation_code': 'H107725000541', 'component_type': 'Cryo', 'blood_group': 'O+', 
+            'qty': 1, 'volume': 33, 'expire_date': 'Pending', 
+            'current_date': '25/08/2025 10:24 PM', 'by_user': 'Abu huraira Zahir Gul', 'note': 'Converted To Cryo by abu-zahr on 6/25/2025 10:24:09 PM',
+            'created_by': 'Mazen Ayash Alruwaili', 'created_date': '11/02/2025 10:27 PM'
+        },
+        {
+            'id': '39263', 'unit_number': '00039373', 'donation_code': 'H107725000729', 'component_type': 'FFP', 'blood_group': 'O-', 
+            'qty': 1, 'volume': 164, 'expire_date': '21/02/2026', 
+            'current_date': '24/02/2025 08:40 AM', 'by_user': 'Mazen Ayash Alruwaili', 'note': '',
+            'created_by': 'Abu huraira Zahir Gul', 'created_date': '22/02/2025 12:38 AM'
+        },
+        {
+            'id': '39580', 'unit_number': '00039690', 'donation_code': 'H107725000837', 'component_type': 'FFP', 'blood_group': 'O-', 
+            'qty': 1, 'volume': 180, 'expire_date': '05/03/2026', 
+            'current_date': '11/03/2025 05:22 AM', 'by_user': 'Mazen Ayash Alruwaili', 'note': '',
+            'created_by': 'Raed Hammad Alotaibi', 'created_date': '06/03/2025 05:07 AM'
+        },
+        {
+            'id': '39748', 'unit_number': '00039858', 'donation_code': 'H107725000893', 'component_type': 'FFP', 'blood_group': 'O+', 
+            'qty': 1, 'volume': 146, 'expire_date': '11/03/2026', 
+            'current_date': '21/03/2025 05:51 AM', 'by_user': 'Belal Mohammed Alshamrani', 'note': '',
+            'created_by': 'Mazen Ayash Alruwaili', 'created_date': '12/03/2025 04:50 AM'
+        },
+        {
+            'id': '40092', 'unit_number': '00040202', 'donation_code': 'H107725001006', 'component_type': 'FFP', 'blood_group': 'O+', 
+            'qty': 1, 'volume': 155, 'expire_date': '19/03/2026', 
+            'current_date': '25/03/2025 05:14 AM', 'by_user': 'Belal Mohammed Alshamrani', 'note': '',
+            'created_by': 'Raed Hammad Alotaibi', 'created_date': '20/03/2025 03:57 AM'
+        },
+        {
+            'id': '40239', 'unit_number': '00040349', 'donation_code': 'H107725001063', 'component_type': 'FFP', 'blood_group': 'O+', 
+            'qty': 1, 'volume': 151, 'expire_date': '06/04/2026', 
+            'current_date': '09/04/2025 01:29 AM', 'by_user': 'Mazen Ayash Alruwaili', 'note': '',
+            'created_by': 'Raed Hammad Alotaibi', 'created_date': '06/04/2025 03:57 PM'
+        },
+        {
+            'id': '40263', 'unit_number': '00040373', 'donation_code': 'H107725001069', 'component_type': 'FFP', 'blood_group': 'O+', 
+            'qty': 1, 'volume': 165, 'expire_date': '07/04/2026', 
+            'current_date': 'Pending', 'by_user': 'Pending', 'note': '',
+            'created_by': 'Raed Hammad Alotaibi', 'created_date': '07/04/2025 04:43 PM'
+        },
+    ]
+    
+    difference_units = system_units[:5]
+
+    return render(request, 'reports/inventory_checkup.html', {
+        'system_units': system_units,
+        'difference_units': difference_units,
+    })
+
+@login_required
+def component_near_expired(request):
+    """
+    Component Near Expired View with mock data.
+    """
+    units = [
+        {
+            'unit_number': '00050078', 'donation_code': 'H107725004378', 'component_type': 'PRBC', 'blood_group': 'A POSITIVE',
+            'volume': 353, 'expire_date': '07/02/2026 12:39 PM', 
+            'inventory_date': '29/12/2025 12:25 AM', 'inventory_by': 'mazen-s',
+            'created_by': 'kh-alanazi', 'created_date': '27/12/2025 09:23 PM',
+            'diff_in_days': 4
+        },
+        {
+            'unit_number': '00050084', 'donation_code': 'H107725004380', 'component_type': 'PRBC', 'blood_group': 'O POSITIVE',
+            'volume': 256, 'expire_date': '07/02/2026 01:28 PM', 
+            'inventory_date': '28/01/2026 10:32 AM', 'inventory_by': 'R-ALOTAIBI',
+            'created_by': 'kh-alanazi', 'created_date': '27/12/2025 09:29 PM',
+            'diff_in_days': 4
+        },
+    ]
+
+    return render(request, 'reports/component_near_expired.html', {
+        'units': units,
+    })
+
+@login_required
+def issued_units_summary(request):
+    """
+    Issued Units Summary view with mock data.
+    """
+    component_summary = [
+        {'name': 'APHERESIS', 'total': 28},
+        {'name': 'Cryoprecipitate', 'total': 12},
+        {'name': 'Fresh Thawed Plasma', 'total': 162},
+        {'name': 'Plat PC', 'total': 97},
+        {'name': 'PRBC', 'total': 366},
+    ]
+
+    patient_summary = [
+        {'name': 'Abdul Salam Siddique Mohammed - 1531693', 'total': 1},
+        {'name': 'Abdulaziz Anwar Ahmed - 1652081', 'total': 1},
+        {'name': 'Abdulaziz Hussain Alali - 1068679', 'total': 2},
+        {'name': 'Abdullah Ali Alhawlan - 1519015', 'total': 9},
+        {'name': 'Abdullah Meziad Alharbi - 1008725', 'total': 6},
+        {'name': 'Abdullah Omar Aljaloud - 1534539', 'total': 1},
+        {'name': 'Abdullatif Khalaf Alshaib - 1530620', 'total': 4},
+        {'name': 'Abdulmohsen Ali Alqahtani - 275231', 'total': 1},
+        {'name': 'Abdulmonem Ahmed Mohmaed - 1636894', 'total': 1},
+        {'name': 'Abdulrahman Fahad Almuyif - 1369702', 'total': 1},
+    ]
+
+    blood_group_summary = [
+         {'component': 'APHERESIS', 'blood_group': 'A Positive', 'total': 13},
+         {'component': 'APHERESIS', 'blood_group': 'O Positive', 'total': 15},
+         {'component': 'Cryoprecipitate', 'blood_group': 'A Negative', 'total': 1},
+         {'component': 'Cryoprecipitate', 'blood_group': 'A Positive', 'total': 3},
+         {'component': 'Cryoprecipitate', 'blood_group': 'O Positive', 'total': 8},
+         {'component': 'Fresh Thawed Plasma', 'blood_group': 'A Negative', 'total': 5},
+         {'component': 'Fresh Thawed Plasma', 'blood_group': 'A Positive', 'total': 36},
+         {'component': 'Fresh Thawed Plasma', 'blood_group': 'AB Negative', 'total': 1},
+         {'component': 'Fresh Thawed Plasma', 'blood_group': 'AB Positive', 'total': 2},
+         {'component': 'Fresh Thawed Plasma', 'blood_group': 'B Negative', 'total': 2},
+         {'component': 'Fresh Thawed Plasma', 'blood_group': 'B Positive', 'total': 42},
+         {'component': 'Fresh Thawed Plasma', 'blood_group': 'O Negative', 'total': 8},
+         {'component': 'Fresh Thawed Plasma', 'blood_group': 'O Positive', 'total': 66},
+         {'component': 'Plat PC', 'blood_group': 'A Negative', 'total': 1},
+         {'component': 'Plat PC', 'blood_group': 'A Positive', 'total': 28},
+         {'component': 'Plat PC', 'blood_group': 'AB Positive', 'total': 6},
+         {'component': 'PRBC', 'blood_group': 'O Positive', 'total': 155}, # Sample data
+    ]
+
+    return render(request, 'reports/issued_units_summary.html', {
+        'component_summary': component_summary,
+        'patient_summary': patient_summary,
+        'blood_group_summary': blood_group_summary,
+    })
+
+@login_required
+def ortho_summary(request):
+    """
+    Ortho Report Summary view with mock data.
+    """
+    summary_data = [
+        {'date': '04 Jan 2026', 'abo': 49, 'abscr': 30, 'kell': 6, 'pheno': 6, 'rh': 49, 'xm': 24},
+        {'date': '05 Jan 2026', 'abo': 153, 'abscr': 102, 'igg': 7, 'kell': 95, 'pheno': 95, 'rh': 153, 'weak_d': 3, 'xm': 20},
+        {'date': '06 Jan 2026', 'abo': 228, 'abscr': 64, 'igg': 33, 'kell': 44, 'pheno': 44, 'rh': 228, 'weak_d': 4, 'xm': 24},
+        {'date': '07 Jan 2026', 'abo': 138, 'abscr': 52, 'igg': 5, 'kell': 31, 'pheno': 31, 'rh': 137, 'weak_d': 4, 'xm': 19},
+        {'date': '08 Jan 2026', 'abo': 129, 'abscr': 40, 'igg': 15, 'kell': 10, 'pheno': 10, 'rh': 129, 'weak_d': 3, 'xm': 35},
+        {'date': '09 Jan 2026', 'abo': 25, 'abscr': 9, 'igg': 9, 'rh': 25, 'xm': 24},
+        {'date': '10 Jan 2026', 'abo': 87, 'abscr': 30, 'igg': 7, 'kell': 14, 'pheno': 14, 'rh': 87, 'weak_d': 1, 'xm': 19},
+        {'date': '11 Jan 2026', 'abo': 106, 'abscr': 39, 'dil_series': 1, 'igg': 5, 'kell': 7, 'pheno': 7, 'rh': 106, 'weak_d': 1, 'xm': 42},
+        {'date': '12 Jan 2026', 'abo': 87, 'abscr': 27, 'igg': 14, 'kell': 13, 'pheno': 13, 'rh': 87, 'weak_d': 1, 'xm': 19},
+        {'date': '13 Jan 2026', 'abo': 139, 'abscr': 63, 'dil_series': 2, 'igg': 7, 'kell': 38, 'pheno': 38, 'rh': 139, 'weak_d': 3, 'xm': 18},
+        {'date': '14 Jan 2026', 'abo': 78, 'abscr': 24, 'ident': 1, 'igg': 5, 'kell': 3, 'pheno': 3, 'rh': 78, 'xm': 35},
+        {'date': '15 Jan 2026', 'abo': 90, 'abscr': 51, 'igg': 7, 'kell': 28, 'pheno': 28, 'poly': 3, 'rh': 90, 'weak_d': 2, 'xm': 22},
+        {'date': '16 Jan 2026', 'abo': 51, 'abscr': 12, 'igg': 3, 'kell': 2, 'pheno': 2, 'poly': 3, 'rh': 51, 'xm': 24},
+    ]
+
+    return render(request, 'reports/ortho_summary.html', {
+        'summary_data': summary_data
+    })
+
+@login_required
+def ortho_results_smc1(request):
+    """
+    Ortho Results - SMC1 View.
+    """
+    results = [
+        {
+            'lab_id': '7955676W', 
+            'test_name': 'X-M new IgG', 
+            'results_lines': ['XM: <span class="font-bold">CMP</span>, Unit Number: H107726000407'], 
+            'result_date': '03/02/2026 04:19 AM'
+        },
+        {
+            'lab_id': '7955676W', 
+            'test_name': 'Newborn', 
+            'results_lines': ['ABO : <span class="font-bold">A</span>', 'Rh : <span class="font-bold">POS</span>', 'IgG : <span class="font-bold">NEG</span>'], 
+            'result_date': '03/02/2026 04:10 AM'
+        },
+        {
+            'lab_id': '7955690W', 
+            'test_name': 'X-M new IgG', 
+            'results_lines': ['XM: <span class="font-bold">CMP</span>, Unit Number: H107726000198', 'XM: <span class="font-bold">CMP</span>, Unit Number: H107726000192'], 
+            'result_date': '03/02/2026 03:06 AM'
+        },
+        {
+            'lab_id': '7955690W', 
+            'test_name': 'ABScr', 
+            'results_lines': ['ABScr : <span class="font-bold">NEG</span>'], 
+            'result_date': '03/02/2026 03:06 AM'
+        },
+        {
+            'lab_id': '7955690W', 
+            'test_name': 'ABO/Rh/Rev', 
+            'results_lines': ['ABO : <span class="font-bold">A</span>', 'Rh : <span class="font-bold">POS</span>'], 
+            'result_date': '03/02/2026 02:54 AM'
+        },
+        {
+            'lab_id': '7955598W', 
+            'test_name': 'X-M new IgG', 
+            'results_lines': ['XM: <span class="font-bold">CMP</span>, Unit Number: H107726000245', 'XM: <span class="font-bold">CMP</span>, Unit Number: H107726000250'], 
+            'result_date': '03/02/2026 02:10 AM'
+        },
+        {
+            'lab_id': '7955598W', 
+            'test_name': 'ABScr', 
+            'results_lines': ['ABScr : <span class="font-bold">NEG</span>'], 
+            'result_date': '03/02/2026 02:10 AM'
+        },
+        {
+            'lab_id': '3862186W', 
+            'test_name': 'X-M new IgG', 
+            'results_lines': ['XM: <span class="font-bold">CMP</span>, Unit Number: H107726000424'], 
+            'result_date': '03/02/2026 02:09 AM'
+        },
+        {
+            'lab_id': '7955598W', 
+            'test_name': 'ABO/Rh/Rev', 
+            'results_lines': ['ABO : <span class="font-bold">O</span>', 'Rh : <span class="font-bold">POS</span>'], 
+            'result_date': '03/02/2026 02:01 AM'
+        },
+         {
+            'lab_id': '3859290W', 
+            'test_name': 'ABScr', 
+            'results_lines': ['ABScr : <span class="font-bold">POS</span>'], 
+            'result_date': '03/02/2026 01:02 AM'
+        },
+    ]
+    return render(request, 'reports/ortho_results.html', {
+        'results': results,
+        'title': 'Ortho Results [ الفرع الأول ]'
+    })
+
+@login_required
+def ortho_results_smc2(request):
+    """
+    Ortho Results - SMC2 View.
+    """
+    # Using same data structure pattern, slightly different data could be used
+    results = [
+        {
+            'lab_id': '7955676W', 
+            'test_name': 'X-M new IgG', 
+            'results_lines': ['XM: <span class="font-bold">CMP</span>, Unit Number: H107726000407'], 
+            'result_date': '03/02/2026 04:19 AM'
+        },
+         {
+            'lab_id': '7955690W', 
+            'test_name': 'ABScr', 
+            'results_lines': ['ABScr : <span class="font-bold">NEG</span>'], 
+            'result_date': '03/02/2026 03:06 AM'
+        },
+    ]
+    return render(request, 'reports/ortho_results.html', {
+        'results': results,
+        'title': 'Ortho Results [ الفرع الثاني ]'
+    })
+
+@login_required
+def infinity_results(request):
+    """
+    Infinity Results View.
+    """
+    results = [
+        {
+            'lab_number': 'H107726000482', 'test_code': '2028', 'test_name': 'BB-ANTI HCV', 
+            'sample_type': 'SERUM', 'result': '0.046', 'result_date': '02/02/2026 12:00 PM',
+            'technician_name': 'KALBAKRI^Dr. Khaled', 'donor_name': 'MOHAMMED ALQARNI'
+        },
+        {
+            'lab_number': 'H107726000463', 'test_code': '2028', 'test_name': 'BB-ANTI HCV', 
+            'sample_type': 'SERUM', 'result': '0.046', 'result_date': '02/02/2026 09:27 AM',
+            'technician_name': 'KALBAKRI^Dr. Khaled', 'donor_name': 'SULTAN ALRAWALY'
+        },
+        {
+            'lab_number': 'H107726000467', 'test_code': '2028', 'test_name': 'BB-ANTI HCV', 
+            'sample_type': 'SERUM', 'result': '0.047', 'result_date': '02/02/2026 09:27 AM',
+            'technician_name': 'KALBAKRI^Dr. Khaled', 'donor_name': 'ABDULRAHMAN HARTHI'
+        },
+        {
+            'lab_number': 'H107726000472', 'test_code': '2028', 'test_name': 'BB-ANTI HCV', 
+            'sample_type': 'SERUM', 'result': '0.047', 'result_date': '02/02/2026 09:27 AM',
+            'technician_name': 'KALBAKRI^Dr. Khaled', 'donor_name': 'RUMAN MIAH'
+        },
+        {
+            'lab_number': 'H107726000494', 'test_code': '2028', 'test_name': 'BB-ANTI HCV', 
+            'sample_type': 'SERUM', 'result': '0.046', 'result_date': '02/02/2026 09:28 AM',
+            'technician_name': 'KALBAKRI^Dr. Khaled', 'donor_name': 'FERAS ALKHAYYAL'
+        },
+        {
+            'lab_number': 'H107726000476', 'test_code': '2028', 'test_name': 'BB-ANTI HCV', 
+            'sample_type': 'SERUM', 'result': '0.047', 'result_date': '02/02/2026 09:27 AM',
+            'technician_name': 'KALBAKRI^Dr. Khaled', 'donor_name': 'NORAH ALORWAN'
+        },
+        {
+            'lab_number': 'H107726000462', 'test_code': '2028', 'test_name': 'BB-ANTI HCV', 
+            'sample_type': 'SERUM', 'result': '0.045', 'result_date': '02/02/2026 09:27 AM',
+            'technician_name': 'KALBAKRI^Dr. Khaled', 'donor_name': 'SIRHAN MURAI'
+        },
+        {
+            'lab_number': 'H107726000475', 'test_code': '2040', 'test_name': 'BB-ANTI-HBs', 
+            'sample_type': 'SERUM', 'result': '1000', 'result_date': '02/02/2026 09:27 AM',
+            'technician_name': 'KALBAKRI^Dr. Khaled', 'donor_name': 'KAOSAR MIA'
+        },
+        {
+            'lab_number': 'H107726000482', 'test_code': '2029', 'test_name': 'BB-HIV p24 Ag / HIV-1&2 Ab (Combined Assay)', 
+            'sample_type': 'SERUM', 'result': '0.172', 'result_date': '02/02/2026 12:00 PM',
+            'technician_name': 'KALBAKRI^Dr. Khaled', 'donor_name': 'MOHAMMED ALQARNI'
+        },
+        {
+            'lab_number': 'H107726000482', 'test_code': '2027', 'test_name': 'BB-Anti HBV-CORE TOTAL', 
+            'sample_type': 'SERUM', 'result': '2.49', 'result_date': '02/02/2026 12:00 PM',
+            'technician_name': 'KALBAKRI^Dr. Khaled', 'donor_name': 'MOHAMMED ALQARNI'
+        },
+    ]
+    return render(request, 'reports/infinity_results.html', {
+        'results': results,
+    })
+
+# Blood Order Process Views
+@login_required
+def blood_requests_old(request):
+    """
+    Blood Requests Listing View.
+    """
+    requests = [
+        {
+            'code': 'R21000014', 'mrn': '961531', 'priority': 'STAT', 'request_type': 'Type & Screen',
+            'diagnosis': 'Anal fissure, unspecified', 'blood_group': 'A+',
+            'requested': ['PRBC: 2', 'HGB: 14.40', 'Duration: Two_Hour', 'FFP: 3', 'INR: 1.00', 'Duration: Half_an_Hour', 'PLT: 4', 'PLTCount: 299', 'Duration: Half_an_Hour', 'CRYO: 1', 'Duration: One_Hour'],
+            'is_emergency': True,
+            'status': 'Received', 'received_date': '23/12/2021 11:38 AM', 'received_by': 'tamer',
+            'created_by': 'Tamer ElGendy', 'created_date': '23/12/2021 11:31 AM',
+            'modified_by': 'Tamer ElGendy', 'modified_date': '23/12/2021 11:39 AM'
+        },
+        {
+            'code': 'R21000013', 'mrn': '354865', 'priority': 'Normal', 'request_type': 'Cross Matching',
+            'diagnosis': 'Sequelae of stroke, not specified as haemorrhage or infarction', 'blood_group': 'O+',
+            'requested': ['PRBC: 1', 'HGB: 9.20', 'Duration: Half_an_Hour'],
+            'is_emergency': False,
+            'status': 'Received', 'received_date': '27/10/2021 02:20 PM', 'received_by': 'tamer',
+            'created_by': 'Tamer ElGendy', 'created_date': '27/10/2021 02:14 PM',
+            'modified_by': '', 'modified_date': ''
+        },
+    ]
+    return render(request, 'blood_process/blood_requests_list.html', {'requests': requests})
+
+@login_required
+def blood_request_create(request):
+    """
+    New Blood Request Form View.
+    """
+    return render(request, 'blood_process/blood_request_form.html')
+
+@login_required
+def blood_order_listing_bb(request):
+    """
+    Blood Order Listing BB View.
+    Fetched from Real DB.
+    """
+    from orders.models import BloodOrder
+    
+    db_orders = BloodOrder.objects.all().select_related('requester').order_by('-created_at')
+    
+    orders = []
+    for o in db_orders:
+        orders.append({
+            'id': o.id,
+            'code': f"ORD-{o.id}",
+            'mrn': o.patient_mrn,
+            'patient_name': o.patient_full_name,
+            'priority': o.get_urgency_display(),
+            'type': o.hospital_ward, # Using Ward as Type for now
+            'blood_group': o.patient_blood_group,
+            'unit_type': o.get_component_type_display(),
+            'quantity': f"{o.units_requested} Unit(s)",
+            'notes': '', # Add notes field to model if needed
+            'status_label': o.get_status_display(),
+            'status_date': o.updated_at.strftime('%d/%m/%Y %I:%M %p'),
+            'status_by': o.requester.username if o.requester else 'System',
+            'created_by': o.requester.username if o.requester else 'System',
+            'created_date': o.created_at.strftime('%d/%m/%Y %I:%M %p')
+        })
+
+    return render(request, 'blood_process/smc2_order_listing.html', {'orders': orders})
+
+@login_required
+def blood_order_detail(request, order_code):
+    """
+    Blood Order Detail View (Tabbed Interface).
+    """
+    from orders.models import BloodOrder
+    from orders.services import OrderService
+    
+    # Handle "ORD-123" or just "123"
+    oid = order_code.replace('ORD-', '')
+    order = get_object_or_404(BloodOrder, pk=oid)
+    
+    # Find Compatible Units
+    compatible_units = OrderService.find_compatible_units(order)
+    
+    # Fetch Crossmatched/Reserved Units
+    crossmatches = order.crossmatches.all().select_related('unit')
+    
+    return render(request, 'blood_process/blood_order_detail.html', {
+        'order': order,
+        'order_code': order_code, # For display
+        'compatible_units': compatible_units,
+        'crossmatches': crossmatches
+    })
+
+@login_required
+def crossmatch_unit(request, order_id):
+    if request.method == 'POST':
+        from orders.models import BloodOrder
+        from inventory.models import BloodComponent
+        from orders.services import OrderService
+        
+        order = get_object_or_404(BloodOrder, pk=order_id)
+        unit_id = request.POST.get('unit_id')
+        unit = get_object_or_404(BloodComponent, pk=unit_id)
+        
+        xm = OrderService.perform_crossmatch(order, unit, request.user)
+        
+        if xm.is_compatible:
+            messages.success(request, f"Unit {unit.unit_number} Crossmatched & Reserved")
+        else:
+            messages.error(request, f"Unit {unit.unit_number} is INCOMPATIBLE")
+            
+        return redirect('blood_order_detail', order_code=f"ORD-{order.id}")
+    return redirect('blood_order_listing_bb')
+
+@login_required
+def dispense_unit(request, crossmatch_id):
+    if request.method == 'POST':
+        from orders.models import Crossmatch
+        from orders.services import OrderService
+        
+        xm = get_object_or_404(Crossmatch, pk=crossmatch_id)
+        
+        try:
+            OrderService.dispense_unit(xm, request.user)
+            messages.success(request, f"Unit {xm.unit.unit_number} ISSUED/DISPENSED successfully.")
+        except ValueError as e:
+            messages.error(request, str(e))
+            
+        return redirect('blood_order_detail', order_code=f"ORD-{xm.order.id}")
+    return redirect('blood_order_listing_bb')
+
+@login_required
+def smc2_orders_listing(request):
+    # For now, showing same orders. In reality, filter by Site = SMC2
+    # But since we renamed SMC2 to "Branch 2", we should filter by that if Site field exists.
+    # Assuming all orders are visible for now.
+    return blood_order_listing_bb(request)
+
+@login_required
+def transfusion_orders(request):
+    from orders.models import BloodOrder
+    
+    # In reality filter by status or department
+    db_orders = BloodOrder.objects.all().order_by('-created_at')
+    
+    orders = []
+    for o in db_orders:
+        orders.append({
+            'patient_name': o.patient_full_name, 
+            'mrn': o.patient_mrn, 
+            'qty': str(o.units_requested), 
+            'note': f"{o.units_requested} Unit(s) {o.component_type}",
+            'site': o.hospital_ward, # Use Ward as Site/Location
+            'source': 'InPatient', 
+            'priority': o.urgency, 
+            'unit_type': o.component_type,
+            'main_qty': str(o.units_requested), 
+            'blood_group': o.patient_blood_group, 
+            'code': f"ORD-{o.id}",
+            'status': o.get_status_display(), 
+            'status_by': 'System', # Placeholder
+            'status_date': o.updated_at,
+            'created_by': o.requester.username if o.requester else 'Unknown', 
+            'created_date': o.created_at
+        })
+
+    return render(request, 'blood_process/transfusion_orders.html', {'orders': orders})
+
+@login_required
+def unit_crossmatch_report(request):
+    from orders.models import Crossmatch
+    
+    crossmatches = Crossmatch.objects.select_related('order', 'unit').order_by('-tested_at')
+    
+    items = []
+    for xm in crossmatches:
+        items.append({
+            'lab_number': f"L26-{xm.id:04d}", # Fake Lab Number
+            'test': 'Crossmatch',
+            'result': 'Compatible' if xm.is_compatible else 'Incompatible',
+            'result_color': 'text-emerald-600' if xm.is_compatible else 'text-rose-600',
+            'created_date': xm.tested_at,
+            'donor_sample_provided': 'Yes',
+            'unit_number': xm.unit.unit_number,
+            'mrn': xm.order.patient_mrn,
+            'patient_name': xm.order.patient_full_name
+        })
+        
+    return render(request, 'reports/unit_crossmatch_report.html', {'items': items, 'title': 'Unit Crossmatch Report'})
+
+@login_required
+def emergency_issue_list(request):
+    # Mock data for Issue Requests List
+    requests = []
+    
+    # Mock similar to screenshot
+    # Columns: Req.Code.#, VisualInspection, LabelChecked, NurseName, NurseID, Patient MRN, Patient Name, Date, Actions
+    names = ['Muath Abdelqader Almomani', 'Fatima Bibi Fiqar', 'Md Saiful - Alam', 'Khalid Ghareeb Abdulhamid', 'Manal Yahiya Hazazi', 'Ahlam Ahmed Almohammed', 'Dilshad Bano Khan']
+    nurses = ['nada', 'niamin', 'ATHIRA', 'SINU', 'akila', 'lalsmed', 'sona thomas', 'jincy mathew', 'jaimol']
+    
+    import random
+    
+    for i in range(20):
+        req_id = 22019 - i
+        nurse = nurses[i % len(nurses)]
+        patient = names[i % len(names)]
+        
+        requests.append({
+            'req_code': req_id,
+            'visual_inspection': True,
+            'label_checked': True,
+            'nurse_name': nurse,
+            'nurse_id': 15865 + i,
+            'patient_mrn': 702650 + (i*123),
+            'patient_name': patient,
+            'date_by_name': 'Omar Mohammed Almutairi' if i % 2 == 0 else 'Faisal Ayed Alotaibi',
+            'date_time': '01/02/2026 05:52 PM'
+        })
+
+    return render(request, 'clinical/emergency_issue_list.html', {
+        'requests': requests
+    })
+
+@login_required
+def emergency_issue_create(request):
+    # Form view for new Emergency Issue Request
+    return render(request, 'clinical/emergency_issue_form.html')
+
+
+# ──────────────────────────────────────────────
+# Component Label API  (POST /api/components/<id>/print_label/)
+# ──────────────────────────────────────────────
+from django.views.decorators.http import require_POST
+from django.views.decorators.csrf import csrf_exempt
+
+@login_required
+@require_POST
+def component_print_label(request, component_id):
+    """
+    Mark a BloodComponent as labeled (simulate print).
+    Called from the Labeling tab in the Donation Workflow.
+    """
+    from inventory.models import BloodComponent
+    from django.utils import timezone
+    import json
+
+    try:
+        component = BloodComponent.objects.get(pk=component_id)
+    except BloodComponent.DoesNotExist:
+        return JsonResponse({'status': 'error', 'error': 'Component not found'}, status=404)
+
+    # Mark as labeled (we add a simple flag via notes if no dedicated field exists)
+    printed_at = timezone.now().strftime('%Y-%m-%d %H:%M')
+    # Store label-printed info in notes if no dedicated field
+    if not component.notes:
+        component.notes = f'Label printed at {printed_at}'
+    elif 'Label printed' not in component.notes:
+        component.notes += f' | Label printed at {printed_at}'
+    component.save(update_fields=['notes'])
+
+    return JsonResponse({
+        'status': 'success',
+        'message': f'Label printed for {component.unit_number}',
+        'printed_at': printed_at,
+        'component_id': component.id,
+        'unit_number': component.unit_number,
+    })
+
+
+@login_required
+@require_POST
+def complete_labeling(request, workflow_id):
+    """
+    Mark all components as labeled & move workflow to LABS step.
+    Called from 'Complete & Move to Storage' button.
+    """
+    from inventory.services import InventoryService
+    from .models import DonorWorkflow
+    from django.shortcuts import get_object_or_404
+
+    workflow = get_object_or_404(DonorWorkflow, pk=workflow_id)
+    InventoryService.release_components(workflow, passed=True)
+
+    if workflow.status not in (DonorWorkflow.Step.LABS, DonorWorkflow.Step.COMPLETED):
+        workflow.status = DonorWorkflow.Step.LABS
+        workflow.save()
+
+    return JsonResponse({'status': 'success', 'message': 'Components moved to storage. Workflow advanced to Labs.'})

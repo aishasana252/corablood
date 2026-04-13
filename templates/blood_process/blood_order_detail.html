@@ -1,0 +1,1086 @@
+{% extends 'base.html' %}
+
+{% block title %}Blood Order View | CoraBlood AI{% endblock %}
+{% block header %}Blood Order View{% endblock %}
+
+{% block content %}
+<div x-data="{ tab: 'header', showNewOrderModal: false, showTransfusionForm: false, showComponentsModal: false }"
+    class="space-y-6">
+
+    <!-- Top Info Bar -->
+    <div class="bg-white rounded p-4 flex items-center justify-between shadow-sm border-l-4 border-red-500">
+        <div class="flex items-center gap-6 text-sm font-bold">
+            <div class="text-slate-800">Request Code : <span class="text-red-600">{{ order_code }}</span></div>
+            <div class="text-slate-800">Patient BloodGroup : <span class="text-red-600">{{ order.patient_blood_group
+                    }}</span></div>
+        </div>
+
+        <div class="flex items-center gap-2">
+            <div class="bg-emerald-500 text-white text-xs px-2 py-1 rounded shadow-sm">
+                Cosigned by : {{ order.requester.username|default:"System" }}<br>
+                On : {{ order.created_at|date:"d/m/Y h:i A" }}
+            </div>
+            <div class="text-red-600 font-bold text-sm px-2">
+                Patient : {{ order.patient_mrn }} - {{ order.patient_full_name }}
+            </div>
+        </div>
+
+        <div class="flex items-center gap-2">
+            <button
+                class="px-3 py-1 bg-emerald-500 hover:bg-emerald-600 text-white text-xs font-bold rounded transition-colors">Acknowledge</button>
+            <a href="{% url 'blood_order_listing_bb' %}"
+                class="px-3 py-1 bg-sky-600 hover:bg-sky-700 text-white text-xs font-bold rounded transition-colors">back</a>
+        </div>
+    </div>
+
+    <!-- Tabs Navigation -->
+    <div class="bg-white rounded-t-lg border-b border-slate-200 px-4 pt-2">
+        <nav class="flex space-x-4 text-xs font-bold text-slate-500 overflow-x-auto">
+            <button @click="tab = 'issuing'"
+                :class="tab === 'issuing' ? 'text-sky-600 border-b-2 border-sky-600' : 'hover:text-slate-700'"
+                class="pb-2 whitespace-nowrap">Issuing</button>
+            <button @click="tab = 'transfusion'"
+                :class="tab === 'transfusion' ? 'text-sky-600 border-b-2 border-sky-600' : 'hover:text-slate-700'"
+                class="pb-2 whitespace-nowrap">Transfusion Records</button>
+            <button @click="tab = 'discrepancy'"
+                :class="tab === 'discrepancy' ? 'text-sky-600 border-b-2 border-sky-600' : 'hover:text-slate-700'"
+                class="pb-2 whitespace-nowrap">Blood Group Discrepancy</button>
+            <button @click="tab = 'history'"
+                :class="tab === 'history' ? 'text-sky-600 border-b-2 border-sky-600' : 'hover:text-slate-700'"
+                class="pb-2 whitespace-nowrap">Blood Group & ABScr History</button>
+            <button @click="tab = 'ortho_results'"
+                :class="tab === 'ortho_results' ? 'text-sky-600 border-b-2 border-sky-600' : 'hover:text-slate-700'"
+                class="pb-2 whitespace-nowrap">Ortho Results</button>
+            <button @click="tab = 'ortho_orders'"
+                :class="tab === 'ortho_orders' ? 'text-sky-600 border-b-2 border-sky-600' : 'hover:text-slate-700'"
+                class="pb-2 whitespace-nowrap">Ortho Orders</button>
+            <button @click="tab = 'header'"
+                :class="tab === 'header' ? 'text-sky-600 border-b-2 border-sky-600' : 'hover:text-slate-700'"
+                class="pb-2 whitespace-nowrap">Header</button>
+        </nav>
+    </div>
+
+    <!-- Tab Contents -->
+    <div class="bg-white rounded-b-lg p-6 shadow-sm min-h-[400px]">
+
+        <!-- Issuing Tab -->
+        <div x-show="tab === 'issuing'" x-cloak>
+            <!-- Emergency Issue Request Section -->
+            <div class="mb-6">
+                <!-- Section Header -->
+                <div class="flex items-center justify-between mb-4 border-b border-light pb-2">
+                    <div class="text-xs font-bold text-slate-700">Emergency Issue Request</div>
+                    <button class="text-slate-400 hover:text-slate-600">
+                        <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 12H4" />
+                        </svg>
+                    </button>
+                </div>
+
+                <div class="space-y-4">
+                    <div>
+                        <label class="block text-xs font-bold text-slate-800 mb-1">Nurse Name</label>
+                        <input type="text" placeholder="Nurse Name"
+                            class="border border-slate-300 rounded text-xs w-full py-1.5 px-2 text-slate-600 focus:outline-none focus:ring-1 focus:ring-sky-500">
+                    </div>
+                    <div>
+                        <label class="block text-xs font-bold text-slate-800 mb-1">Nurse Badge Number</label>
+                        <input type="text" placeholder="Nurse Badge Number"
+                            class="border border-slate-300 rounded text-xs w-full py-1.5 px-2 text-slate-600 focus:outline-none focus:ring-1 focus:ring-sky-500">
+                    </div>
+
+                    <div class="space-y-2">
+                        <label class="flex items-center gap-2 text-xs font-bold text-slate-800">
+                            <input type="checkbox"
+                                class="w-4 h-4 border-2 border-red-500 rounded-sm text-red-600 focus:ring-red-500">
+                            Visual Inspection
+                        </label>
+                        <label class="flex items-center gap-2 text-xs font-bold text-slate-800">
+                            <input type="checkbox"
+                                class="w-4 h-4 border-2 border-red-500 rounded-sm text-red-600 focus:ring-red-500">
+                            Label Checked
+                        </label>
+                    </div>
+
+                    <div class="flex justify-center mt-6 mb-8">
+                        <button @click="showComponentsModal = true"
+                            class="bg-sky-600 text-white text-xs font-bold px-4 py-2 rounded shadow-sm hover:bg-sky-700 transition-colors">
+                            Choose Component
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Selected Components Table -->
+            <div class="mb-8">
+                <div class="text-xs font-bold text-slate-700 mb-2">Selected Components:</div>
+                <div class="overflow-x-auto border rounded border-slate-100 font-sans">
+                    <table class="min-w-full divide-y divide-slate-100">
+                        <thead class="bg-white border-b border-slate-100">
+                            <tr>
+                                <th class="px-4 py-2 text-left text-xs font-bold text-slate-800">#</th>
+                                <th class="px-4 py-2 text-left text-xs font-bold text-slate-800">Donation code</th>
+                                <th class="px-4 py-2 text-left text-xs font-bold text-slate-800">Unit Type</th>
+                                <th class="px-4 py-2 text-left text-xs font-bold text-slate-800">Volume</th>
+                                <th class="px-4 py-2 text-left text-xs font-bold text-slate-800">Issued</th>
+                                <th class="px-4 py-2 text-left text-xs font-bold text-slate-800">Remaining</th>
+                                <th class="px-4 py-2 text-left text-xs font-bold text-slate-800">BloodGroup</th>
+                                <th class="px-4 py-2 text-left text-xs font-bold text-slate-800">ExpireDate</th>
+                                <th class="px-4 py-2 text-left text-xs font-bold text-slate-800">Is paritally Issue?
+                                </th>
+                                <th class="px-4 py-2 text-left text-xs font-bold text-slate-800">Volume Issuing</th>
+                                <th class="px-4 py-2 text-left text-xs font-bold text-slate-800">Notes</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for xm in crossmatches %}
+                            <tr class="hover:bg-slate-50">
+                                <td class="px-4 py-2 text-xs text-slate-600">{{ forloop.counter }}</td>
+                                <td class="px-4 py-2 text-xs text-sky-600 font-bold">{{ xm.unit.unit_number }}</td>
+                                <td class="px-4 py-2 text-xs text-slate-600">{{ xm.unit.get_component_type_display }}
+                                </td>
+                                <td class="px-4 py-2 text-xs text-slate-600">{{ xm.unit.volume_ml }} ml</td>
+                                <td class="px-4 py-2 text-xs text-slate-600">0</td>
+                                <td class="px-4 py-2 text-xs text-slate-600">{{ xm.unit.volume_ml }}</td>
+                                <td class="px-4 py-2 text-xs text-slate-600 font-bold border-l-4 border-red-500 pl-2">{{
+                                    xm.unit.blood_group }}</td>
+                                <td class="px-4 py-2 text-xs text-slate-600">{{ xm.unit.expiration_date|date:"d/m/Y" }}
+                                </td>
+                                <td class="px-4 py-2 text-xs text-slate-600">No</td>
+                                <td class="px-4 py-2 text-xs text-slate-600">
+                                    {% if xm.unit.status == "TRANSFUSED" %}
+                                    <span class="bg-gray-100 text-gray-800 px-2 py-1 rounded font-bold">ISSUED</span>
+                                    {% else %}
+                                    <form method="POST" action="{% url 'dispense_unit' xm.id %}"
+                                        onsubmit="return confirm('Confirm Issue/Dispense this unit?');">
+                                        {% csrf_token %}
+                                        <button type="submit"
+                                            class="bg-emerald-500 hover:bg-emerald-600 text-white text-[10px] font-bold px-3 py-1 rounded transition-colors shadow-sm">
+                                            Issue
+                                        </button>
+                                    </form>
+                                    {% endif %}
+                                </td>
+                            </tr>
+                            {% empty %}
+                            <tr>
+                                <td colspan="11" class="px-4 py-8 text-center text-slate-500 text-xs">
+                                    No units selected/crossmatched yet.
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+
+                <!-- Reason Field -->
+                <div class="mt-4">
+                    <label class="block text-xs font-bold text-slate-800 mb-1">Reason</label>
+                    <input type="text" placeholder="Reason"
+                        class="border border-slate-300 rounded text-xs w-full py-1.5 px-2 text-slate-600 focus:outline-none focus:ring-1 focus:ring-sky-500">
+                </div>
+
+                <!-- Action Buttons -->
+                <div class="flex gap-2 mt-4">
+                    <button
+                        class="bg-sky-600 text-white text-xs font-bold px-4 py-1.5 rounded shadow-sm hover:bg-sky-700 transition-colors">Save</button>
+                    <button
+                        class="bg-slate-100 text-slate-600 text-xs font-bold px-4 py-1.5 rounded shadow-sm border border-slate-300 hover:bg-slate-200 transition-colors">cancel</button>
+                </div>
+            </div>
+
+            <!-- Issue Requests Section -->
+            <div class="border-t border-slate-100 pt-4">
+                <div class="flex items-center justify-between mb-4">
+                    <div class="text-xs font-bold text-slate-700">Issue Requests</div>
+                    <button class="text-slate-400 hover:text-slate-600">
+                        <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 12H4" />
+                        </svg>
+                    </button>
+                </div>
+
+                <div class="grid grid-cols-4 gap-4 mb-4">
+                    <div>
+                        <label class="block text-xs font-bold text-slate-800 mb-1">Code</label>
+                        <input type="text" placeholder="Code"
+                            class="border border-slate-300 rounded text-xs w-full py-1.5 px-2 text-slate-600 focus:outline-none focus:ring-1 focus:ring-sky-500">
+                    </div>
+                    <div>
+                        <label class="block text-xs font-bold text-slate-800 mb-1">MRN</label>
+                        <input type="text" placeholder="MRN"
+                            class="border border-slate-300 rounded text-xs w-full py-1.5 px-2 text-slate-600 focus:outline-none focus:ring-1 focus:ring-sky-500">
+                    </div>
+                    <div>
+                        <label class="block text-xs font-bold text-slate-800 mb-1">Site</label>
+                        <select
+                            class="border border-slate-300 rounded text-xs w-full py-1.5 px-2 text-slate-600 focus:outline-none focus:ring-1 focus:ring-sky-500">
+                            <option value="SMC1">الفرع الأول</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label class="block text-xs font-bold text-slate-800 mb-1">Donation Code</label>
+                        <input type="text" placeholder="Donation Code"
+                            class="border border-slate-300 rounded text-xs w-full py-1.5 px-2 text-slate-600 focus:outline-none focus:ring-1 focus:ring-sky-500">
+                    </div>
+                </div>
+
+                <div class="overflow-x-auto font-sans">
+                    <table class="min-w-full text-xs font-bold text-slate-800">
+                        <thead class="border-b border-light">
+                            <tr>
+                                <th class="py-2 text-left" style="width: 10%;">Req.Code.#</th>
+                                <th class="py-2 text-left" style="width: 15%;">VisualInspection</th>
+                                <th class="py-2 text-left" style="width: 15%;">LabelChecked</th>
+                                <th class="py-2 text-left" style="width: 15%;">NurseName</th>
+                                <th class="py-2 text-left" style="width: 10%;">NurseID</th>
+                                <th class="py-2 text-left" style="width: 10%;">Patient MRN</th>
+                                <th class="py-2 text-left" style="width: 15%;">Patient Name</th>
+                                <th class="py-2 text-left" style="width: 10%;">Date</th>
+                            </tr>
+                        </thead>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <!-- Available Components Modal -->
+        <div x-show="showComponentsModal" class="fixed inset-0 z-[70] overflow-y-auto" role="dialog" aria-modal="true"
+            x-cloak>
+            <div class="fixed inset-0 bg-black bg-opacity-40 transition-opacity" @click="showComponentsModal = false">
+            </div>
+
+            <div class="flex min-h-screen items-center justify-center p-4">
+                <div
+                    class="relative w-full max-w-[90rem] transform overflow-hidden rounded bg-white shadow-xl transition-all p-0 font-sans">
+
+                    <!-- Modal Header -->
+                    <div class="flex items-center justify-between px-6 py-4 border-b border-slate-200">
+                        <h3 class="text-sm font-bold text-slate-700">Available Components</h3>
+                        <button @click="showComponentsModal = false" class="text-slate-400 hover:text-slate-600">
+                            <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                    d="M6 18L18 6M6 6l12 12" />
+                            </svg>
+                        </button>
+                    </div>
+
+                    <!-- Modal Body -->
+                    <div class="p-6">
+                        <div class="mb-4 text-xs font-bold text-slate-700">Donation Components Details</div>
+
+                        <!-- Filters -->
+                        <div class="grid grid-cols-4 gap-6 mb-6">
+                            <div class="space-y-4">
+                                <div class="flex items-center justify-between">
+                                    <label class="text-xs font-bold text-slate-600">Component Type</label>
+                                    <select
+                                        class="border border-slate-300 rounded text-xs w-48 py-1 px-2 text-slate-600 focus:outline-none focus:ring-1 focus:ring-sky-500">
+                                        <option>All Component Type</option>
+                                    </select>
+                                </div>
+                                <div class="flex items-center justify-between">
+                                    <label class="text-xs font-bold text-slate-600">Status</label>
+                                    <select
+                                        class="border border-slate-300 rounded text-xs w-48 py-1 px-2 text-slate-600 focus:outline-none focus:ring-1 focus:ring-sky-500">
+                                        <option>Inventory</option>
+                                    </select>
+                                </div>
+                                <div class="flex items-center justify-between">
+                                    <label class="text-xs font-bold text-slate-600">Donation code</label>
+                                    <input type="text" placeholder="Donation Code"
+                                        class="border border-slate-300 rounded text-xs w-48 py-1 px-2 text-slate-600 focus:outline-none focus:ring-1 focus:ring-sky-500">
+                                </div>
+                            </div>
+                            <div class="space-y-4">
+                                <div class="flex items-center justify-between">
+                                    <label class="text-xs font-bold text-slate-600">Blood Group</label>
+                                    <select
+                                        class="border border-slate-300 rounded text-xs w-48 py-1 px-2 text-slate-600 focus:outline-none focus:ring-1 focus:ring-sky-500">
+                                        <option>All BloodGroups</option>
+                                    </select>
+                                </div>
+                                <div class="flex items-center justify-between">
+                                    <label class="text-xs font-bold text-slate-600">Site</label>
+                                    <select
+                                        class="border border-slate-300 rounded text-xs w-48 py-1 px-2 text-slate-600 focus:outline-none focus:ring-1 focus:ring-sky-500">
+                                        <option value="SMC1">الفرع الأول</option>
+                                    </select>
+                                </div>
+                            </div>
+                            <div class="space-y-4">
+                                <div class="flex items-center justify-between">
+                                    <label class="text-xs font-bold text-slate-600">Pheno Type</label>
+                                    <select
+                                        class="border border-slate-300 rounded text-xs w-48 py-1 px-2 text-slate-600 focus:outline-none focus:ring-1 focus:ring-sky-500">
+                                        <option>All Pheno Types</option>
+                                    </select>
+                                </div>
+                                <div class="flex items-center gap-2 mt-auto pt-2">
+                                    <label class="text-xs font-bold text-slate-600">Donation</label>
+                                    <button
+                                        class="bg-amber-400 hover:bg-amber-500 text-white text-xs font-bold px-4 py-1.5 rounded transition-colors">Select
+                                        Donation</button>
+                                    <button
+                                        class="text-sky-600 text-xs font-bold hover:text-sky-700 flex items-center gap-1">
+                                        <span class="text-lg">×</span> reset
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Components Table -->
+                        <div class="overflow-x-auto">
+                            <table class="min-w-full divide-y divide-slate-100">
+                                <thead class="bg-white">
+                                    <tr>
+                                        <th class="px-2 py-3 text-left text-[10px] font-bold text-slate-800">Unit #</th>
+                                        <th class="px-2 py-3 text-left text-[10px] font-bold text-slate-800">Type</th>
+                                        <th class="px-2 py-3 text-left text-[10px] font-bold text-slate-800">Blood Group
+                                        </th>
+                                        <th class="px-2 py-3 text-left text-[10px] font-bold text-slate-800">Volume</th>
+                                        <th class="px-2 py-3 text-left text-[10px] font-bold text-slate-800">Expiration
+                                        </th>
+                                        <th class="px-2 py-3 text-left text-[10px] font-bold text-slate-800">Location
+                                        </th>
+                                        <th class="px-2 py-3 text-left text-[10px] font-bold text-slate-800">Status</th>
+                                        <th class="px-2 py-3 text-left text-[10px] font-bold text-slate-800">Actions
+                                        </th>
+                                    </tr>
+                                </thead>
+                                <tbody class="divide-y divide-slate-50 bg-white">
+                                    {% for unit in compatible_units %}
+                                    <tr class="hover:bg-slate-50">
+                                        <td class="px-2 py-3 text-[10px] text-sky-600 font-bold">{{ unit.unit_number }}
+                                        </td>
+                                        <td class="px-2 py-3 text-[10px] text-slate-600">{{
+                                            unit.get_component_type_display }}</td>
+                                        <td
+                                            class="px-2 py-3 text-[10px] text-slate-600 font-bold border-l-4 border-red-500 pl-2">
+                                            {{ unit.blood_group }}</td>
+                                        <td class="px-2 py-3 text-[10px] text-slate-600">{{ unit.volume_ml }} ml</td>
+                                        <td class="px-2 py-3 text-[10px] text-slate-600">{{
+                                            unit.expiration_date|date:"d/m/Y" }}</td>
+                                        <td class="px-2 py-3 text-[10px] text-slate-600">{{ unit.location }}</td>
+                                        <td class="px-2 py-3 text-[10px]">
+                                            <span
+                                                class="bg-emerald-100 text-emerald-800 px-1 py-0.5 rounded font-bold">{{
+                                                unit.status }}</span>
+                                        </td>
+                                        <td class="px-2 py-3">
+                                            <form method="POST" action="{% url 'crossmatch_unit' order.id %}">
+                                                {% csrf_token %}
+                                                <input type="hidden" name="unit_id" value="{{ unit.id }}">
+                                                <button type="submit"
+                                                    class="bg-sky-500 hover:bg-sky-600 text-white text-[10px] font-bold px-3 py-1 rounded transition-colors shadow-sm">
+                                                    Crossmatch
+                                                </button>
+                                            </form>
+                                        </td>
+                                    </tr>
+                                    {% empty %}
+                                    <tr>
+                                        <td colspan="8" class="px-4 py-8 text-center text-slate-500 text-xs">
+                                            No compatible units found in inventory.
+                                        </td>
+                                    </tr>
+                                    {% endfor %}
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Header Tab -->
+        <div x-show="tab === 'header'" class="grid grid-cols-1 lg:grid-cols-2 gap-12">
+            <!-- Left Column: Request Info -->
+            <div class="space-y-4 text-xs">
+                <div class="grid grid-cols-3">
+                    <div class="font-bold text-slate-800">Code:</div>
+                    <div class="col-span-2 text-slate-600">{{ order_code }}</div>
+                </div>
+                <div class="grid grid-cols-3">
+                    <div class="font-bold text-slate-800">Type:</div>
+                    <div class="col-span-2 text-slate-600">{{ order.hospital_ward }}</div>
+                </div>
+                <div class="grid grid-cols-3">
+                    <div class="font-bold text-slate-800">Transfusion Reason:</div>
+                    <div class="col-span-2 text-slate-600"></div>
+                </div>
+                <div class="grid grid-cols-3">
+                    <div class="font-bold text-slate-800">Diagnosis:</div>
+                    <div class="col-span-2 text-slate-600">Abscess of vulva</div>
+                </div>
+                <div class="grid grid-cols-3">
+                    <div class="font-bold text-slate-800">Priority:</div>
+                    <div class="col-span-2 text-slate-600">Normal</div>
+                </div>
+
+                <!-- Request Items -->
+                <div class="mt-6 border-t border-slate-100 pt-4">
+                    <div class="text-red-500 font-bold mb-2 flex items-center gap-1">
+                        <svg class="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                d="M19 20H5a2 2 0 01-2-2V6a2 2 0 012-2h10a2 2 0 012 2v1m2 13a2 2 0 01-2-2V7m2 13a2 2 0 002-2V9a2 2 0 00-2-2h-2m-4-3H9M7 16h6M7 8h6v4H7V8z" />
+                        </svg>
+                        Request :
+                    </div>
+                    <div class="flex gap-2">
+                        <span class="px-2 py-1 bg-sky-600 text-white rounded text-xs font-bold">{{ order.units_requested
+                            }} Unit(s)</span>
+                        <span class="px-2 py-1 bg-sky-600 text-white rounded text-xs font-bold">{{
+                            order.get_component_type_display }}</span>
+                    </div>
+                    <div class="flex gap-2 mt-2">
+                        <span class="px-2 py-1 bg-amber-500 text-white rounded text-xs font-bold">INR</span>
+                        <span class="px-2 py-1 bg-amber-500 text-white rounded text-xs font-bold">Not Available</span>
+                    </div>
+                    <div class="mt-2 font-bold text-slate-800 text-[10px] flex items-center gap-1">
+                        WithOut Nat: <span class="text-red-600">✖</span>
+                    </div>
+                    <div class="mt-2 text-[10px] text-slate-600">
+                        <span class="font-bold text-slate-800">Physician Notes:</span> Clinical Indication*: bleeding,
+                        Transfusion Duration*: 20 minutes, History of Previous Transfusions*: yes, Warming (if needed):
+                        no
+                    </div>
+                </div>
+
+                <!-- Order Collection -->
+                <div class="mt-6 border-t border-slate-100 pt-4">
+                    <div class="text-red-500 font-bold mb-2 flex items-center gap-1">
+                        <svg class="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                        </svg>
+                        Order Collection and Receiving :
+                    </div>
+                    <div class="text-[10px] text-slate-600">
+                        <div class="flex items-center gap-1 font-bold text-slate-800"><span
+                                class="text-green-500">✔</span> Order Created</div>
+                        <div>By : Husam Abdul Alim Assebaei</div>
+                        <div>On : 03/02/2026 04:47 AM</div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Right Column: Patient Info & Status -->
+            <div class="space-y-4 text-xs">
+                <!-- Status Section -->
+                <div class="border-b border-slate-100 pb-4 mb-4">
+                    <div class="text-red-500 font-bold mb-2 flex items-center gap-1">
+                        <span class="text-green-500 font-bold">✔</span> Status :
+                    </div>
+                    <div class="grid grid-cols-3 gap-y-2">
+                        <div class="font-bold text-slate-800">Status:</div>
+                        <div class="col-span-2"><span
+                                class="px-2 py-0.5 bg-sky-600 text-white rounded text-[10px] font-bold">New</span></div>
+
+                        <div class="font-bold text-slate-800">StatusBy:</div>
+                        <div class="col-span-2 text-slate-600">Husam Abdul Alim Assebaei</div>
+
+                        <div class="font-bold text-slate-800">Status Date:</div>
+                        <div class="col-span-2 text-slate-600">03/02/2026 04:47 AM</div>
+
+                        <div class="font-bold text-slate-800">Status Note:</div>
+                        <div class="col-span-2 text-slate-600"></div>
+                    </div>
+                </div>
+
+                <!-- Patient Section -->
+                <div class="border-b border-slate-100 pb-4 mb-4">
+                    <div class="text-red-500 font-bold mb-2 flex items-center gap-1">
+                        <svg class="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+                        </svg>
+                        Patient :
+                    </div>
+                    <div class="space-y-1 text-slate-600">
+                        <div><span class="font-bold text-slate-800">Patient :</span> {{ order.patient_mrn }} - {{
+                            order.patient_full_name }}</div>
+                        <div><span class="font-bold text-slate-800">Blood Group :</span> {{ order.patient_blood_group }}
+                        </div>
+                        <div><span class="font-bold text-slate-800">Site :</span> الفرع الأول</div>
+                        <div><span class="font-bold text-slate-800">Patient Kind:</span> {{ order.hospital_ward }}</div>
+                    </div>
+                </div>
+
+                <!-- Creation Section -->
+                <div>
+                    <div class="text-red-500 font-bold mb-2 flex items-center gap-1">
+                        <svg class="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                        </svg>
+                        Creation :
+                    </div>
+                    <div class="grid grid-cols-3 gap-y-2">
+                        <div class="font-bold text-slate-800">CreatedBy:</div>
+                        <div class="col-span-2 text-slate-600">Husam Abdul Alim Assebaei</div>
+
+                        <div class="font-bold text-slate-800">Created Date:</div>
+                        <div class="col-span-2 text-slate-600">03/02/2026 04:47 AM</div>
+                    </div>
+                </div>
+
+            </div>
+        </div>
+
+        <!-- Transfusion Records Tab -->
+        <div x-show="tab === 'transfusion'" x-cloak>
+
+            <!-- Refresh Icon -->
+            <div class="flex justify-center mb-6">
+                <button class="text-sky-600 hover:text-sky-700 transition-colors">
+                    <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                            d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                    </svg>
+                </button>
+            </div>
+
+            <div class="overflow-x-auto border rounded border-slate-100 font-sans">
+                <table class="min-w-full divide-y divide-slate-100">
+                    <thead class="bg-gray-50/50">
+                        <tr>
+                            <th class="px-6 py-3 text-left text-xs font-bold text-slate-800 tracking-wider">InsertedBy
+                            </th>
+                            <th class="px-6 py-3 text-left text-xs font-bold text-slate-800 tracking-wider">InsertedOn
+                            </th>
+                            <th class="px-6 py-3 text-left text-xs font-bold text-slate-800 tracking-wider">View</th>
+                        </tr>
+                    </thead>
+                    <tbody class="divide-y divide-slate-50 bg-white">
+                        <tr>
+                            <td class="px-6 py-3 text-xs text-slate-600 text-left">raji</td>
+                            <td class="px-6 py-3 text-xs text-slate-600 text-left">26/01/2026 02:40 AM</td>
+                            <td class="px-6 py-3 text-left">
+                                <button @click="showTransfusionForm = true"
+                                    class="px-3 py-1 bg-sky-600 hover:bg-sky-700 text-white text-[10px] font-bold rounded shadow-sm transition-colors">View</button>
+                            </td>
+                        </tr>
+                        <tr>
+                            <td class="px-6 py-3 text-xs text-slate-600 text-left">raji</td>
+                            <td class="px-6 py-3 text-xs text-slate-600 text-left">26/01/2026 05:14 AM</td>
+                            <td class="px-6 py-3 text-left">
+                                <button @click="showTransfusionForm = true"
+                                    class="px-3 py-1 bg-sky-600 hover:bg-sky-700 text-white text-[10px] font-bold rounded shadow-sm transition-colors">View</button>
+                            </td>
+                        </tr>
+                        <tr>
+                            <td class="px-6 py-3 text-xs text-slate-600 text-left">bincy-k</td>
+                            <td class="px-6 py-3 text-xs text-slate-600 text-left">26/01/2026 09:47 AM</td>
+                            <td class="px-6 py-3 text-left">
+                                <button @click="showTransfusionForm = true"
+                                    class="px-3 py-1 bg-sky-600 hover:bg-sky-700 text-white text-[10px] font-bold rounded shadow-sm transition-colors">View</button>
+                            </td>
+                        </tr>
+                        <tr>
+                            <td class="px-6 py-3 text-xs text-slate-600 text-left">ashly-j</td>
+                            <td class="px-6 py-3 text-xs text-slate-600 text-left">03/02/2026 02:08 AM</td>
+                            <td class="px-6 py-3 text-left">
+                                <button @click="showTransfusionForm = true"
+                                    class="px-3 py-1 bg-sky-600 hover:bg-sky-700 text-white text-[10px] font-bold rounded shadow-sm transition-colors">View</button>
+                            </td>
+                        </tr>
+                        <tr>
+                            <td class="px-6 py-3 text-xs text-slate-600 text-left">Jithisha</td>
+                            <td class="px-6 py-3 text-xs text-slate-600 text-left">03/02/2026 05:12 AM</td>
+                            <td class="px-6 py-3 text-left">
+                                <button @click="showTransfusionForm = true"
+                                    class="px-3 py-1 bg-sky-600 hover:bg-sky-700 text-white text-[10px] font-bold rounded shadow-sm transition-colors">View</button>
+                            </td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <!-- Transfusion Form Modal -->
+        <div x-show="showTransfusionForm" class="fixed inset-0 z-[60] overflow-y-auto" role="dialog" aria-modal="true"
+            x-cloak>
+            <div class="fixed inset-0 bg-black bg-opacity-40 transition-opacity" @click="showTransfusionForm = false">
+            </div>
+
+            <div class="flex min-h-screen items-center justify-center p-4">
+                <div
+                    class="relative w-full max-w-5xl transform overflow-hidden rounded bg-white shadow-xl transition-all p-4 max-h-[90vh] overflow-y-auto font-sans">
+
+                    <!-- Form Header -->
+                    <div class="flex justify-between items-start mb-4 border-b pb-4">
+                        <div class="flex items-start gap-2">
+                            <div class="text-green-600 font-bold text-3xl">SMC</div>
+                            <div class="text-[10px] text-slate-600 leading-tight">
+                                <div class="font-bold text-slate-800 text-sm">SMC Hospital</div>
+                                <div>Nursing Department</div>
+                                <div>P.O. Box 66548 Riyadh</div>
+                                <div>Phone: (011)4343800</div>
+                            </div>
+                        </div>
+                        <div class="text-xs text-slate-600 leading-tight text-right text-gray-800">
+                            <div><span class="font-bold">Patient Name:</span> Bilqis - Ahmed</div>
+                            <div><span class="font-bold">MRN:</span> 1651311</div>
+                            <div><span class="font-bold">Gender:</span> Female <span class="font-bold">Age:</span> 75
+                                year(s) <span class="font-bold">Tower:</span> Tower 2 <span
+                                    class="font-bold">Level:</span> Level 2</div>
+                            <div><span class="font-bold">Room:</span> 2201 - R&B ICU/CCU</div>
+                            <div><span class="font-bold">Attending Physician:</span> Dr. Mahmoud Hassoun</div>
+                            <div class="max-w-md ml-auto"><span class="font-bold">Primary Diagnosis:</span> Abscess of
+                                vulva. Sepsis, unspecified. Type 2 diabetes mellitus with poor control. Uterovaginal
+                                prolapse, unspecified.</div>
+                        </div>
+                    </div>
+
+                    <div class="bg-gray-300 text-center font-bold text-sm py-1 mb-4 border border-gray-400">
+                        BLOOD ADMINISTRATION MONITORING RECORD / Form 1
+                    </div>
+
+                    <!-- Main Form Fields -->
+                    <div class="space-y-2 mb-6 max-w-md">
+                        <div class="flex items-center">
+                            <label class="w-32 font-bold text-xs">Blood Unit No.:</label>
+                            <input type="text" value="H-107726000317"
+                                class="border border-gray-400 p-1 text-xs w-full h-6">
+                        </div>
+                        <div class="flex items-center">
+                            <label class="w-32 font-bold text-xs">Date:</label>
+                            <input type="text" value="26.01.26" class="border border-gray-400 p-1 text-xs w-full h-6">
+                        </div>
+                        <div class="flex items-center">
+                            <label class="w-32 font-bold text-xs">Blood Product:</label>
+                            <input type="text" value="PRBC" class="border border-gray-400 p-1 text-xs w-full h-6">
+                        </div>
+                    </div>
+
+                    <!-- Vital Signs Grid -->
+                    <div class="overflow-x-auto mb-6">
+                        <table class="w-full border-collapse border border-black text-xs text-center">
+                            <thead>
+                                <tr class="bg-gray-300">
+                                    <th class="border border-black p-1 w-24">VITAL SIGNS</th>
+                                    <th class="border border-black p-1 w-32">PRE-INFUSION</th>
+                                    <th colspan="6" class="border border-black p-0">
+                                        <div class="border-b border-black p-1">(PRBC) TRANSFUSE WITHIN FOUR (4) HOURS
+                                        </div>
+                                        <div class="grid grid-cols-6 divide-x divide-black">
+                                            <div class="p-1">5 min</div>
+                                            <div class="p-1">10 min</div>
+                                            <div class="p-1">15 min</div>
+                                            <div class="p-1">30 min</div>
+                                            <div class="p-1">30 min</div>
+                                            <div class="p-1">30 min</div>
+                                        </div>
+                                    </th>
+                                    <th colspan="2" class="border border-black p-0">
+                                        <div class="border-b border-black p-1">1 - HOUR</div>
+                                        <div class="grid grid-cols-2 divide-x divide-black">
+                                            <div class="p-1">1 Hr</div>
+                                            <div class="p-1">1 Hr</div>
+                                        </div>
+                                    </th>
+                                    <th class="border border-black p-1 w-32">(POST-TRANSFUSION)</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <!-- Time Row -->
+                                <tr class="bg-amber-100/50">
+                                    <td class="border border-black p-1 font-bold bg-gray-300">TIME --> <div
+                                            class="text-[9px] font-normal">(24-HR format)</div>
+                                    </td>
+                                    <td class="border border-black p-1">0225h</td>
+                                    <td class="border border-black p-1">0230h</td>
+                                    <td class="border border-black p-1">0240h</td>
+                                    <td class="border border-black p-1">0255h</td>
+                                    <td class="border border-black p-1">0325h</td>
+                                    <td class="border border-black p-1">0355h</td>
+                                    <td class="border border-black p-1">0425h</td>
+                                    <td class="border border-black p-1">0525h</td>
+                                    <td class="border border-black p-1"></td>
+                                    <td class="border border-black p-1">0625h</td>
+                                </tr>
+                                <!-- Temp Row -->
+                                <tr>
+                                    <td class="border border-black p-1 font-bold text-left pl-2">Temp</td>
+                                    <td class="border border-black p-1 bg-yellow-50">37.2 Degree Celciouse</td>
+                                    <td class="border border-black p-1 bg-yellow-50">36.8 De</td>
+                                    <td class="border border-black p-1 bg-yellow-50">37.2 De</td>
+                                    <td class="border border-black p-1 bg-yellow-50">37.1 De</td>
+                                    <td class="border border-black p-1 bg-yellow-50">36.8 De</td>
+                                    <td class="border border-black p-1 bg-yellow-50">36.7 De</td>
+                                    <td class="border border-black p-1 bg-yellow-50">36.7 De</td>
+                                    <td class="border border-black p-1 bg-yellow-50">36.9 De</td>
+                                    <td class="border border-black p-1 bg-yellow-50"></td>
+                                    <td class="border border-black p-1 bg-yellow-50">36.7 Degree Celciouse</td>
+                                </tr>
+                                <!-- Pulse Rate -->
+                                <tr>
+                                    <td class="border border-black p-1 font-bold text-left pl-2">Pulse Rate</td>
+                                    <td class="border border-black p-1 bg-yellow-50">118 bpm</td>
+                                    <td class="border border-black p-1 bg-yellow-50">115 bpn</td>
+                                    <td class="border border-black p-1 bg-yellow-50">118 bpn</td>
+                                    <td class="border border-black p-1 bg-yellow-50">118 bpn</td>
+                                    <td class="border border-black p-1 bg-yellow-50">117 bpn</td>
+                                    <td class="border border-black p-1 bg-yellow-50">125 bpr</td>
+                                    <td class="border border-black p-1 bg-yellow-50">117 bpn</td>
+                                    <td class="border border-black p-1 bg-yellow-50">115 bpn</td>
+                                    <td class="border border-black p-1 bg-yellow-50"></td>
+                                    <td class="border border-black p-1 bg-yellow-50">111 bpm</td>
+                                </tr>
+                                <!-- Respiration -->
+                                <tr>
+                                    <td class="border border-black p-1 font-bold text-left pl-2">Respiration</td>
+                                    <td class="border border-black p-1 bg-yellow-50">24 cpm</td>
+                                    <td class="border border-black p-1 bg-yellow-50">26 cpm</td>
+                                    <td class="border border-black p-1 bg-yellow-50">22 cpm</td>
+                                    <td class="border border-black p-1 bg-yellow-50">24 cpm</td>
+                                    <td class="border border-black p-1 bg-yellow-50">24 cpm</td>
+                                    <td class="border border-black p-1 bg-yellow-50">26 cpm</td>
+                                    <td class="border border-black p-1 bg-yellow-50">28 cpm</td>
+                                    <td class="border border-black p-1 bg-yellow-50">24 cpm</td>
+                                    <td class="border border-black p-1 bg-yellow-50"></td>
+                                    <td class="border border-black p-1 bg-yellow-50">28 cpm</td>
+                                </tr>
+                                <!-- BP -->
+                                <tr>
+                                    <td class="border border-black p-1 font-bold text-left pl-2">B/P</td>
+                                    <td class="border border-black p-1 bg-yellow-50">92/53 mmhg</td>
+                                    <td class="border border-black p-1 bg-yellow-50">144/72</td>
+                                    <td class="border border-black p-1 bg-yellow-50">96/83 r</td>
+                                    <td class="border border-black p-1 bg-yellow-50">96/74 r</td>
+                                    <td class="border border-black p-1 bg-yellow-50">112/74 r</td>
+                                    <td class="border border-black p-1 bg-yellow-50">108/59</td>
+                                    <td class="border border-black p-1 bg-yellow-50">92/60 r</td>
+                                    <td class="border border-black p-1 bg-yellow-50">105/86</td>
+                                    <td class="border border-black p-1 bg-yellow-50"></td>
+                                    <td class="border border-black p-1 bg-yellow-50">mmhg</td>
+                                </tr>
+                                <!-- SPO2 -->
+                                <tr>
+                                    <td class="border border-black p-1 font-bold text-left pl-2">SPO2</td>
+                                    <td class="border border-black p-1 bg-yellow-50">97 %</td>
+                                    <td class="border border-black p-1 bg-yellow-50">96 %</td>
+                                    <td class="border border-black p-1 bg-yellow-50">97 %</td>
+                                    <td class="border border-black p-1 bg-yellow-50">97 %</td>
+                                    <td class="border border-black p-1 bg-yellow-50">96 %</td>
+                                    <td class="border border-black p-1 bg-yellow-50">97 %</td>
+                                    <td class="border border-black p-1 bg-yellow-50">95 %</td>
+                                    <td class="border border-black p-1 bg-yellow-50">97 %</td>
+                                    <td class="border border-black p-1 bg-yellow-50"></td>
+                                    <td class="border border-black p-1 bg-yellow-50">95 %</td>
+                                </tr>
+                                <!-- Staff -->
+                                <tr>
+                                    <td class="border border-black p-1 font-bold text-left pl-2 leading-tight">
+                                        STAFF<br><span class="text-[9px] font-normal">(INITIALS & BADGE)</span></td>
+                                    <td class="border border-black p-1 bg-yellow-50">Raji Indira/12555</td>
+                                    <td class="border border-black p-1 bg-yellow-50">Raji Ind</td>
+                                    <td class="border border-black p-1 bg-yellow-50">Raji Ind</td>
+                                    <td class="border border-black p-1 bg-yellow-50">Raji Ind</td>
+                                    <td class="border border-black p-1 bg-yellow-50">Raji Ind</td>
+                                    <td class="border border-black p-1 bg-yellow-50">Raji Ind</td>
+                                    <td class="border border-black p-1 bg-yellow-50">Raji Ind</td>
+                                    <td class="border border-black p-1 bg-yellow-50">Raji Ind</td>
+                                    <td class="border border-black p-1 bg-yellow-50"></td>
+                                    <td class="border border-black p-1 bg-yellow-50">Raji Indira/12555</td>
+                                </tr>
+                                <!-- Remarks -->
+                                <tr>
+                                    <td class="border border-black p-1 font-bold text-left pl-2">REMARKS</td>
+                                    <td colspan="10" class="border border-black p-1 bg-yellow-50">1 unit PRBc Transfused
+                                        without any Reaction</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+
+                    <!-- Footer Inputs -->
+                    <div class="space-y-2 text-sm">
+                        <div class="flex items-center gap-2">
+                            <label class="font-bold">Total volume received:</label>
+                            <input type="text" value="400ml" class="border border-gray-400 rounded h-6 w-32 px-2">
+                        </div>
+                        <div class="flex items-center gap-2">
+                            <label class="font-bold">Transfusion Reaction:</label>
+                            <div class="flex items-center gap-4">
+                                <label class="flex items-center gap-1">
+                                    <input type="checkbox" class="h-4 w-4"> Yes, Time
+                                    <input type="text" class="border border-gray-400 h-6 w-24">
+                                </label>
+                                <label class="flex items-center gap-1">
+                                    <input type="checkbox" checked class="h-4 w-4 text-sky-600"> No
+                                </label>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="mt-8 flex justify-end gap-2">
+                        <button
+                            class="px-4 py-2 bg-sky-600 text-white rounded font-bold hover:bg-sky-700 transition-colors">Save</button>
+                        <button @click="showTransfusionForm = false"
+                            class="px-4 py-2 border border-slate-300 rounded font-bold hover:bg-slate-50 transition-colors text-slate-700">Close</button>
+                    </div>
+
+                </div>
+            </div>
+        </div>
+
+        <!-- Blood Group Discrepancy Tab -->
+        <div x-show="tab === 'discrepancy'" x-cloak>
+
+            <!-- Refresh Icon -->
+            <div class="flex justify-center mb-6">
+                <button class="text-sky-600 hover:text-sky-700 transition-colors">
+                    <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                            d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                    </svg>
+                </button>
+            </div>
+
+            <div class="overflow-x-auto border rounded border-slate-100 font-sans">
+                <table class="min-w-full divide-y divide-slate-100">
+                    <thead class="bg-gray-50/50">
+                        <tr>
+                            <th class="px-6 py-3 text-left text-xs font-bold text-slate-800 tracking-wider">BloodGroup
+                            </th>
+                            <th class="px-6 py-3 text-left text-xs font-bold text-slate-800 tracking-wider">Repeat Count
+                            </th>
+                        </tr>
+                    </thead>
+                    <tbody class="divide-y divide-slate-50 bg-white">
+                        <!-- Empty State (No rows visible in screenshot, but structure implies data would go here) -->
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <!-- Blood Group & ABScr History Tab -->
+        <div x-show="tab === 'history'" x-cloak>
+
+            <!-- Refresh Icon -->
+            <div class="flex justify-center mb-6">
+                <button class="text-sky-600 hover:text-sky-700 transition-colors">
+                    <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                            d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                    </svg>
+                </button>
+            </div>
+
+            <div class="overflow-x-auto border rounded border-slate-100 font-sans">
+                <table class="min-w-full divide-y divide-slate-100">
+                    <thead class="bg-gray-50/50">
+                        <tr>
+                            <th class="px-6 py-3 text-left text-xs font-bold text-slate-800 tracking-wider">Source</th>
+                            <th class="px-6 py-3 text-left text-xs font-bold text-slate-800 tracking-wider">Test</th>
+                            <th class="px-6 py-3 text-left text-xs font-bold text-slate-800 tracking-wider">Result</th>
+                            <th class="px-6 py-3 text-left text-xs font-bold text-slate-800 tracking-wider">LabNumber
+                            </th>
+                            <th class="px-6 py-3 text-left text-xs font-bold text-slate-800 tracking-wider">ResultDate
+                            </th>
+                        </tr>
+                    </thead>
+                    <tbody class="divide-y divide-slate-50 bg-white">
+                        <!-- Empty State (No rows visible in screenshot, but structure implies data would go here) -->
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+
+        <!-- Ortho Orders Tab -->
+        <div x-show="tab === 'ortho_orders'" x-cloak>
+            <div class="mb-4 text-xs font-bold text-slate-700">Ortho Orders</div>
+
+            <div class="flex justify-end mb-4">
+                <button @click="showNewOrderModal = true"
+                    class="px-3 py-1.5 bg-slate-100 border border-slate-300 hover:bg-slate-200 text-slate-700 text-xs font-bold rounded shadow-sm flex items-center gap-1 transition-colors">
+                    <span>+ New Order</span>
+                </button>
+            </div>
+
+            <div class="overflow-x-auto border rounded border-slate-100 font-sans">
+                <table class="min-w-full divide-y divide-slate-100">
+                    <thead class="bg-slate-50">
+                        <tr>
+                            <th class="px-6 py-3 text-left text-xs font-bold text-slate-800 tracking-wider">OrderId</th>
+                            <th class="px-6 py-3 text-left text-xs font-bold text-slate-800 tracking-wider">Order Code
+                            </th>
+                            <th class="px-6 py-3 text-left text-xs font-bold text-slate-800 tracking-wider">Test Id</th>
+                            <th class="px-6 py-3 text-left text-xs font-bold text-slate-800 tracking-wider">Test</th>
+                            <th class="px-6 py-3 text-left text-xs font-bold text-slate-800 tracking-wider">
+                                ResultRecieved</th>
+                            <th class="px-6 py-3 text-left text-xs font-bold text-slate-800 tracking-wider">Creation
+                            </th>
+                        </tr>
+                    </thead>
+                    <tbody class="divide-y divide-slate-50 bg-white">
+                        <tr>
+                            <td colspan="6" class="px-6 py-12 text-center text-xs text-slate-400 font-medium">No Orders
+                                Found</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <!-- New Order Modal -->
+        <div x-show="showNewOrderModal" class="fixed inset-0 z-50 overflow-y-auto" role="dialog" aria-modal="true"
+            x-cloak>
+            <!-- Backdrop -->
+            <div class="fixed inset-0 bg-black bg-opacity-40 transition-opacity" @click="showNewOrderModal = false">
+            </div>
+
+            <!-- Modal Panel -->
+            <div class="flex min-h-screen items-start justify-center pt-20 px-4">
+                <div
+                    class="relative w-full max-w-4xl transform overflow-hidden rounded bg-white shadow-xl transition-all">
+                    <!-- Header -->
+                    <div class="flex items-center justify-between border-b border-slate-200 px-6 py-4">
+                        <h3 class="text-sm font-bold text-slate-700">New Order</h3>
+                        <button @click="showNewOrderModal = false" class="text-slate-400 hover:text-slate-500">
+                            <span class="sr-only">Close</span>
+                            <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" />
+                            </svg>
+                        </button>
+                    </div>
+
+                    <!-- Body -->
+                    <div class="px-6 py-6 pb-20">
+                        <label class="block text-xs font-bold text-slate-700 mb-2">Test Names</label>
+                        <select
+                            class="block w-full rounded-sm border-slate-300 py-2 pl-3 pr-10 text-xs focus:border-sky-500 focus:outline-none focus:ring-1 focus:ring-sky-500 shadow-sm text-slate-600">
+                            <option>Choose Test</option>
+                            <option>0.8 abo conf</option>
+                            <option>0.8 % ABO/Rh/Reverse</option>
+                            <option>0.8 fullreverse</option>
+                            <option>AB tlt</option>
+                            <option>ABID</option>
+                            <option>ABID-enzyme</option>
+                            <option>ABO conf.</option>
+                            <option>ABO/DD</option>
+                            <option>ABO/Rh/Reverse</option>
+                            <option>ABScr</option>
+                            <option>ABScr IgG</option>
+                            <option>Anti IgG anti C3b C3d</option>
+                            <option>Auto Cont</option>
+                            <option>DCT</option>
+                            <option>Donor</option>
+                            <option>Donor 0.8%</option>
+                            <option>Newborn full XM IgG 0.8</option>
+                            <option selected>Newborn full XM IgG segment</option>
+                            <option>Newborn full XM poly 0.8</option>
+                            <option>Newborn full XM poly segment</option>
+                            <option>Newborn T/S</option>
+                            <option>Panel C IgG</option>
+                            <option>Plt abo conf.</option>
+                            <option>Rh/K Phenotype</option>
+                            <option>T/S</option>
+                            <option>T/S IgG</option>
+                            <option>0.8% T/S</option>
+                            <option>T/SRh/Kell pheno</option>
+                            <option>Weak D</option>
+                            <option>XM 0.8%</option>
+                            <option>XM Segment</option>
+                            <option>x-match IgG</option>
+                            <option>XM segment IgG</option>
+                        </select>
+                        <div class="mt-1 border-l-2 border-red-500 h-4 w-0"></div>
+                        <!-- Simulating the red marker in screenshot -->
+                    </div>
+
+                    <!-- Footer -->
+                    <div class="bg-white px-6 py-4 flex items-center justify-end gap-2 border-t border-slate-100">
+                        <button
+                            class="rounded bg-sky-500 px-4 py-1.5 text-xs font-semibold text-white shadow-sm hover:bg-sky-600 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-sky-500 shadow-sm transition-colors">
+                            Save
+                        </button>
+                        <button @click="showNewOrderModal = false"
+                            class="rounded bg-white border border-slate-200 px-4 py-1.5 text-xs font-semibold text-slate-600 shadow-sm hover:bg-slate-50 transition-colors">
+                            Close
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Ortho Results Tab -->
+        <div x-show="tab === 'ortho_results'" x-cloak>
+
+            <!-- Section Header -->
+            <div class="flex items-center justify-between mb-4 pb-2">
+                <div class="text-xs font-bold text-slate-700">Ortho Results [ الفرع الأول ]</div>
+                <button class="text-slate-400 hover:text-slate-600">
+                    <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 12H4" />
+                    </svg>
+                </button>
+            </div>
+
+            <div class="overflow-x-auto border rounded border-slate-100 mb-6 font-sans">
+                <table class="min-w-full divide-y divide-slate-100">
+                    <thead class="bg-gray-50/50">
+                        <tr>
+                            <th class="px-6 py-3 text-left text-xs font-bold text-slate-800 tracking-wider">labId</th>
+                            <th class="px-6 py-3 text-left text-xs font-bold text-slate-800 tracking-wider">testName
+                            </th>
+                            <th class="px-6 py-3 text-left text-xs font-bold text-slate-800 tracking-wider">FullTestName
+                            </th>
+                            <th class="px-6 py-3 text-left text-xs font-bold text-slate-800 tracking-wider">results</th>
+                            <th class="px-6 py-3 text-left text-xs font-bold text-slate-800 tracking-wider">Result Date
+                            </th>
+                        </tr>
+                    </thead>
+                    <tbody class="divide-y divide-slate-50 bg-white">
+                        <!-- Filter Row -->
+                        <tr>
+                            <td class="px-4 py-3">
+                                <input type="text" placeholder="Filter by labId"
+                                    class="w-full text-xs text-slate-500 placeholder-slate-400 border-none focus:ring-0 p-0 bg-transparent">
+                            </td>
+                            <td class="px-4 py-3">
+                                <input type="text" placeholder="Filter by Test"
+                                    class="w-full text-xs text-slate-500 placeholder-slate-400 border-none focus:ring-0 p-0 bg-transparent">
+                            </td>
+                            <td class="px-6 py-3"></td>
+                            <td class="px-6 py-3"></td>
+                            <td class="px-4 py-3">
+                                <div
+                                    class="relative flex items-center border border-slate-300 rounded px-2 py-1 bg-white">
+                                    <svg class="w-4 h-4 text-slate-400" fill="none" viewBox="0 0 24 24"
+                                        stroke="currentColor">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                            d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                                    </svg>
+                                    <input type="text" placeholder="...search"
+                                        class="w-full text-xs text-slate-500 placeholder-slate-400 border-none focus:ring-0 p-0 ml-2 bg-transparent text-right">
+                                </div>
+                            </td>
+                        </tr>
+                        <!-- Empty Data Message -->
+                        <tr>
+                            <td colspan="5" class="px-6 py-12 text-center text-xs text-slate-400 font-medium">No Results
+                                Found</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+
+            <!-- Original Message Section -->
+            <div class="border-t border-slate-100 pt-4 mt-6">
+                <div class="flex items-center justify-between pb-2">
+                    <div class="text-xs font-bold text-slate-700">Original Message</div>
+                    <button class="text-slate-400 hover:text-slate-600">
+                        <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 12H4" />
+                        </svg>
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

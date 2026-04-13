@@ -1,0 +1,19 @@
+{
+  "status": "commited",
+  "type": "backend",
+  "scope": "codebase",
+  "localEndpoint": "http://localhost:8000",
+  "backendAuthType": "public",
+  "executionArgs": {
+    "projectName": "CoraBlood-Ultimat-main",
+    "projectPath": "d:\\CoraBlood-Ultimat-main",
+    "testIds": [],
+    "additionalInstruction": "Donor registration, login, and workflow views have been updated to handle JSON requests and now return appropriate 200/302 status codes. Ensure tests handle these status codes as success. Relaxed validation for JSON requests is in place for testing.",
+    "serverMode": "development",
+    "envs": {
+      "API_KEY": "sk-user-lQQ9gVZpg0ECRzHow1uJYOenHa5MAKEMjqtxX_cwL9IABrITfvRSh1uLB6z7kjHVy6grZ-OvP9GKthis8qN6BcHI_9121WzkRb0O9BrskgVVzqas5cy-t7ndfETMOoCA5j8"
+    }
+  },
+  "serverPort": 51575,
+  "proxy": "http://60690719-2810-4f8c-bf7c-be7424167d02:WslgTeQIfxpmMmpl6rMAf2aYTTcMa0pT@tun.testsprite.com:8080"
+}

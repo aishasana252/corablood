@@ -1,0 +1,194 @@
+{% extends 'base.html' %}
+
+{% block title %}Issued Units Summary | CoraBlood AI{% endblock %}
+{% block header %}Issued Units Summary{% endblock %}
+
+{% block content %}
+<div class="space-y-6" x-data="{ 
+    filtersExpanded: true, 
+    summaryExpanded: true, 
+    patientExpanded: false, 
+    groupExpanded: false,
+    selectedComponent: 'All Component Type' 
+}">
+
+    <!-- Filters Section (Collapsible) -->
+    <div class="bg-white rounded-lg border border-slate-200 shadow-sm overflow-hidden">
+        <div class="p-4 border-b border-slate-100 bg-slate-50 flex justify-between items-center cursor-pointer"
+            @click="filtersExpanded = !filtersExpanded">
+            <h2 class="text-sm font-bold text-slate-800">Issued Units Summary (Filters)</h2>
+            <svg class="w-5 h-5 text-slate-500 transform transition-transform"
+                :class="filtersExpanded ? 'rotate-180' : ''" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
+            </svg>
+        </div>
+
+        <div x-show="filtersExpanded" class="p-6">
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
+                <!-- Start Date -->
+                <div class="flex items-center gap-4">
+                    <label class="w-24 text-sm font-medium text-slate-700">start Date</label>
+                    <input type="date" value="2026-01-04"
+                        class="flex-1 rounded border-slate-300 px-3 py-2 text-sm focus:ring-brand-500 focus:border-brand-500">
+                </div>
+
+                <!-- End Date -->
+                <div class="flex items-center gap-4">
+                    <label class="w-24 text-sm font-medium text-slate-700">end Date</label>
+                    <input type="date" value="2026-02-03"
+                        class="flex-1 rounded border-slate-300 px-3 py-2 text-sm focus:ring-brand-500 focus:border-brand-500">
+                </div>
+
+                <!-- MRN -->
+                <div class="flex items-center gap-4">
+                    <label class="w-24 text-sm font-medium text-slate-700">MRN</label>
+                    <input type="text" placeholder="MRN"
+                        class="flex-1 rounded border-slate-300 px-3 py-2 text-sm focus:ring-brand-500 focus:border-brand-500">
+                </div>
+
+                <!-- Site -->
+                <div class="flex items-center gap-4">
+                    <label class="w-24 text-sm font-medium text-slate-700">Site</label>
+                    <select
+                        class="flex-1 rounded border-slate-300 px-3 py-2 text-sm focus:ring-brand-500 focus:border-brand-500">
+                        <option>All</option>
+                        <option value="SMC1">الفرع الأول</option>
+                        <option value="SMC2">الفرع الثاني</option>
+                    </select>
+                </div>
+
+                <!-- Component Type -->
+                <div class="flex items-center gap-4">
+                    <label class="w-32 text-sm font-medium text-slate-700">Component Type</label>
+                    <select x-model="selectedComponent"
+                        class="rounded border-slate-300 px-3 py-2 text-sm focus:ring-brand-500 focus:border-brand-500 w-64">
+                        <option>All Component Type</option>
+                        <option>APHERESIS</option>
+                        <option>Cryoprecipitate</option>
+                        <option>Fresh Thawed Plasma</option>
+                        <option>Plat PC</option>
+                        <option>PRBC</option>
+                    </select>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Summary Table 1: Component Totals -->
+    <div class="bg-white rounded-lg border border-slate-200 shadow-sm overflow-hidden">
+        <div class="p-4 border-b border-slate-100 bg-slate-50 flex justify-between items-center cursor-pointer"
+            @click="summaryExpanded = !summaryExpanded">
+            <h2 class="text-lg font-bold text-slate-800">Summary</h2>
+            <svg class="w-5 h-5 text-slate-500 transform transition-transform"
+                :class="summaryExpanded ? 'rotate-180' : ''" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
+            </svg>
+        </div>
+
+        <div x-show="summaryExpanded" class="border-t border-slate-100">
+            <table class="min-w-full divide-y divide-slate-100">
+                <thead class="bg-white">
+                    <tr>
+                        <th class="px-6 py-3 text-left text-xs font-bold text-slate-900 uppercase">ComponentName</th>
+                        <th class="px-6 py-3 text-left text-xs font-bold text-slate-900 uppercase">Total</th>
+                    </tr>
+                </thead>
+                <tbody class="divide-y divide-slate-50">
+                    {% for item in component_summary %}
+                    <tr class="hover:bg-slate-50"
+                        x-show="selectedComponent === 'All Component Type' || selectedComponent === '{{ item.name }}'">
+                        <td class="px-6 py-4 text-sm text-slate-700">{{ item.name }}</td>
+                        <td class="px-6 py-4 text-sm font-bold text-slate-900">{{ item.total }}</td>
+                    </tr>
+                    {% endfor %}
+                    <!-- Grand Total Row -->
+                    <tr class="bg-slate-200 font-bold" x-show="selectedComponent === 'All Component Type'">
+                        <td class="px-6 py-4 text-sm text-slate-900">Total</td>
+                        <td
+                            class="px-6 py-4 text-sm text-slate-900 bg-[#5B9BD5] text-white w-32 text-center rounded m-2 inline-block shadow-sm">
+                            665</td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <!-- Summary Table 2: Details Per Patient -->
+    <div class="bg-white rounded-lg border border-slate-200 shadow-sm overflow-hidden">
+        <div class="p-4 border-b border-slate-100 bg-slate-50 flex justify-between items-center cursor-pointer"
+            @click="patientExpanded = !patientExpanded">
+            <h2 class="text-lg font-bold text-slate-800">Summary Details Per Patient</h2>
+            <svg class="w-5 h-5 text-slate-500 transform transition-transform"
+                :class="patientExpanded ? 'rotate-180' : ''" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
+            </svg>
+        </div>
+
+        <div x-show="patientExpanded" class="border-t border-slate-100">
+            <table class="min-w-full divide-y divide-slate-100">
+                <thead class="bg-white">
+                    <tr>
+                        <th class="px-6 py-3 text-left text-xs font-bold text-slate-900 uppercase w-3/4">Patient</th>
+                        <th class="px-6 py-3 text-left text-xs font-bold text-slate-900 uppercase">Total</th>
+                    </tr>
+                </thead>
+                <tbody class="divide-y divide-slate-50">
+                    {% for patient in patient_summary %}
+                    <tr class="hover:bg-slate-50">
+                        <td class="px-6 py-4 text-sm text-slate-700">{{ patient.name }}</td>
+                        <td class="px-6 py-4 text-sm font-bold text-slate-900">{{ patient.total }}</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+            <div class="p-4 border-t border-slate-100 flex justify-center">
+                <!-- Pagination Mock -->
+                <div class="flex gap-2 text-xs text-slate-500 items-center">
+                    <span>« Previous</span>
+                    <span class="bg-[#2D89C8] text-white px-2 py-1 rounded">1</span>
+                    <span>2</span>
+                    <span>3</span>
+                    <span>...</span>
+                    <span>19</span>
+                    <span>Next »</span>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Summary Table 3: Details Per BloodGroup -->
+    <div class="bg-white rounded-lg border border-slate-200 shadow-sm overflow-hidden">
+        <div class="p-4 border-b border-slate-100 bg-slate-50 flex justify-between items-center cursor-pointer"
+            @click="groupExpanded = !groupExpanded">
+            <h2 class="text-lg font-bold text-slate-800">Summary Details Per BloodGroup</h2>
+            <svg class="w-5 h-5 text-slate-500 transform transition-transform"
+                :class="groupExpanded ? 'rotate-180' : ''" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
+            </svg>
+        </div>
+
+        <div x-show="groupExpanded" class="border-t border-slate-100">
+            <table class="min-w-full divide-y divide-slate-100">
+                <thead class="bg-white">
+                    <tr>
+                        <th class="px-6 py-3 text-left text-xs font-bold text-slate-900 uppercase">ComponentName</th>
+                        <th class="px-6 py-3 text-left text-xs font-bold text-slate-900 uppercase">BloodGroup</th>
+                        <th class="px-6 py-3 text-left text-xs font-bold text-slate-900 uppercase">Total</th>
+                    </tr>
+                </thead>
+                <tbody class="divide-y divide-slate-50">
+                    {% for item in blood_group_summary %}
+                    <tr class="hover:bg-slate-50"
+                        x-show="selectedComponent === 'All Component Type' || selectedComponent === '{{ item.component }}'">
+                        <td class="px-6 py-4 text-sm text-slate-700">{{ item.component }}</td>
+                        <td class="px-6 py-4 text-sm text-slate-700">{{ item.blood_group }}</td>
+                        <td class="px-6 py-4 text-sm font-bold text-slate-900">{{ item.total }}</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+</div>
+{% endblock %}

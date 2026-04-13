@@ -1,0 +1,375 @@
+{% extends "base.html" %}
+
+{% block header %}Manage Contraindications{% endblock %}
+
+{% block content %}
+<div x-data="rulesSettings()" class="space-y-6">
+
+    <!-- Header -->
+    <div class="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+        <div>
+            <h1 class="text-2xl font-display font-bold text-slate-900">Eligibility Rules</h1>
+            <p class="text-slate-500">Manage donor eligibility parameters, workflow controls, and product separation
+                rules.</p>
+        </div>
+    </div>
+
+    <!-- Tabs -->
+    <div class="border-b border-slate-200">
+        <nav class="-mb-px flex space-x-8" aria-label="Tabs">
+            <button @click="activeTab = 'rules'"
+                :class="activeTab === 'rules' ? 'border-brand-500 text-brand-600' : 'border-transparent text-slate-500 hover:text-slate-700 hover:border-slate-300'"
+                class="whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm transition-colors">
+                Donor Eligibility Parameters
+            </button>
+            <button @click="activeTab = 'workflow'"
+                :class="activeTab === 'workflow' ? 'border-brand-500 text-brand-600' : 'border-transparent text-slate-500 hover:text-slate-700 hover:border-slate-300'"
+                class="whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm transition-colors">
+                Donation Workflow Control
+            </button>
+            <button @click="activeTab = 'separation'"
+                :class="activeTab === 'separation' ? 'border-brand-500 text-brand-600' : 'border-transparent text-slate-500 hover:text-slate-700 hover:border-slate-300'"
+                class="whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm transition-colors">
+                Product Separation
+            </button>
+        </nav>
+    </div>
+
+    <!-- Tab Content: Eligibility Rules -->
+    <div x-show="activeTab === 'rules'" class="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden">
+        <table class="w-full text-left">
+            <thead class="bg-slate-50 border-b border-slate-100">
+                <tr>
+                    <th class="px-6 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wider w-12">#</th>
+                    <th class="px-6 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wider">ColumnText</th>
+                    <th class="px-6 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wider">
+                        MinimumOrExpected</th>
+                    <th class="px-6 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wider">Maximum</th>
+                    <th class="px-6 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wider">Type</th>
+                    <th class="px-6 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wider text-right">
+                        Actions</th>
+                </tr>
+            </thead>
+            <tbody class="divide-y divide-slate-100">
+                {% for rule in rules %}
+                <tr class="hover:bg-slate-50 transition-colors group">
+                    <td class="px-6 py-4 text-sm text-slate-400 font-mono">{{ rule.order }}</td>
+                    <td class="px-6 py-4">
+                        <div class="text-sm font-medium text-slate-800">{{ rule.name }}</div>
+                        <div class="text-xs text-slate-400">{{ rule.key }}</div>
+                    </td>
+                    <td class="px-6 py-4 text-sm text-slate-600 font-mono">
+                        {{ rule.min_value|default:"-" }}
+                    </td>
+                    <td class="px-6 py-4 text-sm text-slate-600 font-mono">
+                        {{ rule.max_value|default:"-" }}
+                    </td>
+                    <td class="px-6 py-4">
+                        <span
+                            class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-slate-100 text-slate-800">
+                            {{ rule.get_category_display }}
+                        </span>
+                    </td>
+                    <td class="px-6 py-4 text-right">
+                        <button
+                            @click="editRule({{ rule.id }}, '{{ rule.min_value|default_if_none:'' }}', '{{ rule.max_value|default_if_none:'' }}')"
+                            class="text-brand-600 hover:text-brand-700 text-sm font-medium transition-colors">
+                            Edit
+                        </button>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+
+    <!-- Tab Content: Workflow Settings -->
+    <div x-show="activeTab === 'workflow'"
+        class="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden">
+        <form method="post" action="{% url 'settings_contraindications' %}" class="divide-y divide-slate-100">
+            {% csrf_token %}
+            <input type="hidden" name="action" value="config_save">
+
+            <!-- Section 1: Pre-Donation Checks -->
+            <div class="p-6">
+                <div class="mb-4">
+                    <h3 class="text-lg font-bold text-slate-900">Pre-Donation Checks</h3>
+                    <p class="text-sm text-slate-500">Configure mandatory checks before collection starts.</p>
+                </div>
+
+                <div class="space-y-4">
+                    <div class="flex items-center justify-between">
+                        <div>
+                            <label class="text-sm font-medium text-slate-700 block">Enable Pre-Donation Checks
+                                Step</label>
+                            <span class="text-xs text-slate-400">If disabled, the entire checks screen is
+                                skipped.</span>
+                        </div>
+                        <label class="relative inline-flex items-center cursor-pointer">
+                            <input type="checkbox" name="enable_pre_donation_checks" class="sr-only peer" {% if
+                                config.enable_pre_donation_checks %}checked{% endif %}>
+                            <div
+                                class="w-11 h-6 bg-slate-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-brand-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-brand-600">
+                            </div>
+                        </label>
+                    </div>
+
+                    <div class="flex items-center justify-between pl-4 border-l-2 border-slate-100">
+                        <label class="text-sm font-medium text-slate-700">Require Bag Visual Inspection</label>
+                        <label class="relative inline-flex items-center cursor-pointer">
+                            <input type="checkbox" name="require_bag_inspection" class="sr-only peer" {% if
+                                config.require_bag_inspection %}checked{% endif %}>
+                            <div
+                                class="w-11 h-6 bg-slate-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-brand-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-brand-600">
+                            </div>
+                        </label>
+                    </div>
+
+                    <div class="flex items-center justify-between pl-4 border-l-2 border-slate-100">
+                        <label class="text-sm font-medium text-slate-700">Require Both Arms Inspection</label>
+                        <label class="relative inline-flex items-center cursor-pointer">
+                            <input type="checkbox" name="require_arm_inspection" class="sr-only peer" {% if
+                                config.require_arm_inspection %}checked{% endif %}>
+                            <div
+                                class="w-11 h-6 bg-slate-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-brand-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-brand-600">
+                            </div>
+                        </label>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Section 2: Procedure Details -->
+            <div class="p-6">
+                <div class="mb-4">
+                    <h3 class="text-lg font-bold text-slate-900">Procedure Controls</h3>
+                    <p class="text-sm text-slate-500">Settings for the phlebotomy procedure.</p>
+                </div>
+                <div class="flex items-center justify-between">
+                    <div>
+                        <label class="text-sm font-medium text-slate-700 block">Allow Manual Time Entry</label>
+                        <span class="text-xs text-slate-400">If enabled, staff can manually override start/end
+                            times.</span>
+                    </div>
+                    <label class="relative inline-flex items-center cursor-pointer">
+                        <input type="checkbox" name="allow_manual_time_entry" class="sr-only peer" {% if
+                            config.allow_manual_time_entry %}checked{% endif %}>
+                        <div
+                            class="w-11 h-6 bg-slate-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-brand-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-brand-600">
+                        </div>
+                    </label>
+                </div>
+            </div>
+
+            <!-- Section 3: Workflow Stages -->
+            <div class="p-6">
+                <div class="mb-4">
+                    <h3 class="text-lg font-bold text-slate-900">Workflow Stages</h3>
+                    <p class="text-sm text-slate-500">Enable or disable specific post-donation stages.</p>
+                </div>
+
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <div class="flex items-center justify-between p-4 bg-slate-50 rounded-xl border border-slate-100">
+                        <span class="font-medium text-slate-700">Separation Steps</span>
+                        <label class="relative inline-flex items-center cursor-pointer">
+                            <input type="checkbox" name="enable_separation_stage" class="sr-only peer" {% if
+                                config.enable_separation_stage %}checked{% endif %}>
+                            <div
+                                class="w-9 h-5 bg-slate-300 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-emerald-500">
+                            </div>
+                        </label>
+                    </div>
+
+                    <div class="flex items-center justify-between p-4 bg-slate-50 rounded-xl border border-slate-100">
+                        <span class="font-medium text-slate-700">Initial Labeling</span>
+                        <label class="relative inline-flex items-center cursor-pointer">
+                            <input type="checkbox" name="enable_initial_label_stage" class="sr-only peer" {% if
+                                config.enable_initial_label_stage %}checked{% endif %}>
+                            <div
+                                class="w-9 h-5 bg-slate-300 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-emerald-500">
+                            </div>
+                        </label>
+                    </div>
+
+                    <div class="flex items-center justify-between p-4 bg-slate-50 rounded-xl border border-slate-100">
+                        <span class="font-medium text-slate-700">Un-Tested Storage</span>
+                        <label class="relative inline-flex items-center cursor-pointer">
+                            <input type="checkbox" name="enable_untested_storage_stage" class="sr-only peer" {% if
+                                config.enable_untested_storage_stage %}checked{% endif %}>
+                            <div
+                                class="w-9 h-5 bg-slate-300 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-emerald-500">
+                            </div>
+                        </label>
+                    </div>
+
+                    <div class="flex items-center justify-between p-4 bg-slate-50 rounded-xl border border-slate-100">
+                        <span class="font-medium text-slate-700">Donor Notifications</span>
+                        <label class="relative inline-flex items-center cursor-pointer">
+                            <input type="checkbox" name="enable_notifications_stage" class="sr-only peer" {% if
+                                config.enable_notifications_stage %}checked{% endif %}>
+                            <div
+                                class="w-9 h-5 bg-slate-300 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-emerald-500">
+                            </div>
+                        </label>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Footer -->
+            <div class="p-6 bg-slate-50 flex justify-end">
+                <button type="submit"
+                    class="bg-slate-900 hover:bg-slate-800 text-white font-medium py-2.5 px-6 rounded-xl transition-colors shadow-lg shadow-slate-900/10">
+                    Save Configuration
+                </button>
+            </div>
+        </form>
+    </div>
+
+    <!-- Tab Content: Separation (Placeholder) -->
+    <div x-show="activeTab === 'separation'"
+        class="p-8 text-center bg-slate-50 rounded-2xl border border-dashed border-slate-300">
+        <div class="inline-flex items-center justify-center w-12 h-12 rounded-full bg-slate-100 mb-4">
+            <svg class="w-6 h-6 text-slate-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                    d="M19.428 15.428a2 2 0 00-1.022-.547l-2.384-.477a6 6 0 00-3.86.517l-.318.158a6 6 0 01-3.86.517L6.05 15.21a2 2 0 00-1.806.547M8 4h8l-1 1v5.172a2 2 0 00.586 1.414l5 5c1.26 1.26.367 3.414-1.415 3.414H4.828c-1.782 0-2.674-2.154-1.414-3.414l5-5A2 2 0 009 10.172V5L8 4z" />
+            </svg>
+        </div>
+        <h3 class="text-lg font-medium text-slate-900">Separation Rules</h3>
+        <p class="text-slate-500 mt-1">Product separation and authorization control settings will be implemented here.
+        </p>
+    </div>
+
+    <!-- Edit Modal -->
+    <div x-show="isModalOpen" style="display: none;" class="fixed inset-0 z-50 overflow-y-auto"
+        aria-labelledby="modal-title" role="dialog" aria-modal="true">
+        <div class="flex items-end justify-center min-h-screen pt-4 px-4 pb-20 text-center sm:block sm:p-0">
+
+            <div x-show="isModalOpen" x-transition:enter="ease-out duration-300" x-transition:enter-start="opacity-0"
+                x-transition:enter-end="opacity-100" x-transition:leave="ease-in duration-200"
+                x-transition:leave-start="opacity-100" x-transition:leave-end="opacity-0"
+                class="fixed inset-0 bg-slate-900/75 transition-opacity" aria-hidden="true" @click="closeModal()"></div>
+
+            <span class="hidden sm:inline-block sm:align-middle sm:h-screen" aria-hidden="true">&#8203;</span>
+
+            <div x-show="isModalOpen" x-transition:enter="ease-out duration-300"
+                x-transition:enter-start="opacity-0 translate-y-4 sm:translate-y-0 sm:scale-95"
+                x-transition:enter-end="opacity-100 translate-y-0 sm:scale-100"
+                x-transition:leave="ease-in duration-200"
+                x-transition:leave-start="opacity-100 translate-y-0 sm:scale-100"
+                x-transition:leave-end="opacity-0 translate-y-4 sm:translate-y-0 sm:scale-95"
+                class="inline-block align-bottom bg-white rounded-2xl text-left overflow-hidden shadow-xl transform transition-all sm:my-8 sm:align-middle sm:max-w-lg w-full">
+
+                <form method="post" action="{% url 'settings_contraindications' %}">
+                    {% csrf_token %}
+                    <input type="hidden" name="rule_id" x-model="formData.id">
+
+                    <div class="bg-white px-4 pt-5 pb-4 sm:p-6 sm:pb-4">
+                        <h3 class="text-lg font-bold text-slate-900 mb-4">Edit Rule Parameter</h3>
+
+                        <!-- Values -->
+                        <div class="grid grid-cols-2 gap-4 mb-6">
+                            <div>
+                                <label class="block text-sm font-medium text-slate-700 mb-1">Minimum</label>
+                                <input type="number" step="0.1" name="min_value" x-model="formData.min"
+                                    class="w-full px-4 py-2 rounded-lg border border-slate-300 focus:border-brand-500 focus:ring-2 focus:ring-brand-500/20 outline-none">
+                            </div>
+                            <div>
+                                <label class="block text-sm font-medium text-slate-700 mb-1">Maximum</label>
+                                <input type="number" step="0.1" name="max_value" x-model="formData.max"
+                                    class="w-full px-4 py-2 rounded-lg border border-slate-300 focus:border-brand-500 focus:ring-2 focus:ring-brand-500/20 outline-none">
+                            </div>
+                        </div>
+
+                        <!-- Deferral Settings -->
+                        <div class="border-t border-slate-100 pt-4">
+                            <h4 class="text-sm font-bold text-slate-900 mb-3 flex items-center gap-2">
+                                <svg class="w-4 h-4 text-rose-500" fill="none" viewBox="0 0 24 24"
+                                    stroke="currentColor">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                        d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                                </svg>
+                                Deferral Config
+                            </h4>
+
+                            <div class="space-y-4">
+                                <div>
+                                    <label class="block text-sm font-medium text-slate-700 mb-1">Deferral Code
+                                        (Auto-Sync)</label>
+                                    <input type="text" name="deferral_code" x-model="formData.def_code"
+                                        placeholder="e.g. VITAL_FAIL"
+                                        class="w-full px-4 py-2 rounded-lg border border-slate-300 bg-slate-50 focus:border-brand-500 outline-none font-mono text-sm uppercase">
+                                    <p class="text-xs text-slate-400 mt-1">If set, updates Deferral Settings
+                                        automatically.</p>
+                                </div>
+
+                                <div class="flex gap-6">
+                                    <label class="flex items-center gap-2 cursor-pointer">
+                                        <input type="radio" name="deferral_type" value="TEMPORARY"
+                                            x-model="formData.def_type" class="text-brand-600 focus:ring-brand-500">
+                                        <span class="text-sm font-medium text-slate-700">Temporary</span>
+                                    </label>
+                                    <label class="flex items-center gap-2 cursor-pointer">
+                                        <input type="radio" name="deferral_type" value="PERMANENT"
+                                            x-model="formData.def_type" class="text-red-600 focus:ring-red-500">
+                                        <span class="text-sm font-medium text-red-700">Permanent</span>
+                                    </label>
+                                </div>
+
+                                <div x-show="formData.def_type === 'TEMPORARY'" x-transition>
+                                    <label class="block text-sm font-medium text-slate-700 mb-1">Duration (Days)</label>
+                                    <input type="number" name="deferral_days" x-model="formData.def_days"
+                                        class="w-full px-4 py-2 rounded-lg border border-slate-300 focus:border-brand-500 focus:ring-2 focus:ring-brand-500/20 outline-none">
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="bg-slate-50 px-4 py-3 sm:px-6 sm:flex sm:flex-row-reverse">
+                        <button type="submit"
+                            class="w-full inline-flex justify-center rounded-xl border border-transparent shadow-sm px-4 py-2 bg-brand-600 text-base font-medium text-white hover:bg-brand-700 focus:outline-none sm:ml-3 sm:w-auto sm:text-sm">
+                            Save Changes
+                        </button>
+                        <button type="button" @click="closeModal()"
+                            class="mt-3 w-full inline-flex justify-center rounded-xl border border-slate-300 shadow-sm px-4 py-2 bg-white text-base font-medium text-slate-700 hover:bg-slate-50 focus:outline-none sm:mt-0 sm:ml-3 sm:w-auto sm:text-sm">
+                            Cancel
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+</div>
+
+<script>
+    document.addEventListener('alpine:init', () => {
+        Alpine.data('rulesSettings', () => ({
+            activeTab: 'rules',
+            isModalOpen: false,
+            formData: {
+                id: '',
+                min: '',
+                max: '',
+                def_code: '',
+                def_type: 'TEMPORARY',
+                def_days: 0
+            },
+
+            editRule(id, min, max, code, permanent, days) {
+                this.formData = {
+                    id: id,
+                    min: min,
+                    max: max,
+                    def_code: code || '',
+                    def_type: permanent ? 'PERMANENT' : 'TEMPORARY',
+                    def_days: days || 0
+                };
+                this.isModalOpen = true;
+            },
+
+            closeModal() {
+                this.isModalOpen = false;
+            }
+        }))
+    })
+</script>
+{% endblock %}

@@ -1,0 +1,507 @@
+{% extends 'base.html' %}
+
+{% block title %}Monthly Report | CoraBlood AI{% endblock %}
+{% block header %}
+<span x-text="lang === 'en' ? 'Monthly Report' : 'التقرير الشهري'"></span>
+{% endblock %}
+
+{% block content %}
+<div class="space-y-6" x-data="{ activeTab: 'donors' }">
+
+    <!-- Filters Section -->
+    <div class="bg-white rounded-lg border border-slate-200 p-6 shadow-sm">
+        <h2 class="text-lg font-bold text-slate-800 mb-4" x-text="lang === 'en' ? 'Monthly Report' : 'التقرير الشهري'">
+        </h2>
+
+        <div class="grid grid-cols-1 md:grid-cols-4 gap-6 items-end">
+            <div class="space-y-1">
+                <label class="block text-xs font-bold text-slate-700">Start Date</label>
+                <div class="relative">
+                    <input type="date" value="2026-01-04"
+                        class="w-full rounded border-slate-300 text-sm px-3 py-2 pr-10 focus:ring-brand-500 focus:border-brand-500">
+                </div>
+            </div>
+
+            <div class="space-y-1">
+                <label class="block text-xs font-bold text-slate-700">End Date</label>
+                <div class="relative">
+                    <input type="date" value="2026-02-03"
+                        class="w-full rounded border-slate-300 text-sm px-3 py-2 pr-10 focus:ring-brand-500 focus:border-brand-500">
+                </div>
+            </div>
+
+            <div class="space-y-1">
+                <label class="block text-xs font-bold text-slate-700">Site</label>
+                <select
+                    class="w-full rounded border-slate-300 text-sm px-3 py-2 focus:ring-brand-500 focus:border-brand-500">
+                    <option>All Sites</option>
+                    <option value="SMC1">الفرع الأول</option>
+                    <option value="SMC2">الفرع الثاني</option>
+                </select>
+            </div>
+        </div>
+    </div>
+
+    <!-- Statistics Grid -->
+    <div class="bg-white rounded-lg border border-slate-200 shadow-sm overflow-hidden">
+        <div class="grid grid-cols-3 divide-x divide-slate-100 border-b border-slate-100">
+            <!-- Row 1 -->
+            <div class="p-4 flex justify-between items-center">
+                <span class="font-bold text-slate-700 text-sm">Accepted Donors</span>
+                <div class="flex items-center gap-2">
+                    <span class="bg-emerald-500 text-white text-xs font-bold px-2 py-1 rounded">{{ stats.accepted_donors
+                        }}</span>
+                    <span class="text-sm font-bold text-slate-800">{{ stats.accepted_donors_pct }}%</span>
+                </div>
+            </div>
+            <div class="p-4 flex justify-between items-center">
+                <span class="font-bold text-slate-700 text-sm">Rejected Donors</span>
+                <div class="flex items-center gap-2">
+                    <span class="bg-red-500 text-white text-xs font-bold px-2 py-1 rounded">{{ stats.rejected_donors
+                        }}</span>
+                    <span class="text-sm font-bold text-slate-800">{{ stats.rejected_donors_pct }}%</span>
+                </div>
+            </div>
+            <div class="p-4 flex justify-between items-center bg-slate-50/50">
+                <span class="font-bold text-slate-700 text-sm">Total Applied Donors</span>
+                <span class="bg-[#2D89C8] text-white text-xs font-bold px-2 py-1 rounded">{{ stats.total_applied
+                    }}</span>
+            </div>
+
+            <!-- Row 2 -->
+            <div class="p-4 flex justify-between items-center">
+                <span class="font-bold text-slate-700 text-sm">Total Reactive Tests</span>
+                <span class="bg-yellow-500 text-white text-xs font-bold px-2 py-1 rounded">{{ stats.total_reactive_tests
+                    }}</span>
+            </div>
+            <div class="p-4 flex justify-between items-center">
+                <span class="font-bold text-slate-700 text-sm">Total Reactive Units</span>
+                <div class="flex items-center gap-2">
+                    <span class="bg-red-500 text-white text-xs font-bold px-2 py-1 rounded">{{
+                        stats.total_reactive_units }}</span>
+                    <span class="text-sm font-bold text-slate-800">{{ stats.total_reactive_units_pct }}%</span>
+                </div>
+            </div>
+            <div class="p-4 flex justify-between items-center">
+                <span class="font-bold text-slate-700 text-sm">Accepted Units [Accepted Donors {{ stats.accepted_donors
+                    }} - Reactive Units {{ stats.total_reactive_units }}]</span>
+                <div class="flex items-center gap-2">
+                    <span class="bg-emerald-500 text-white text-xs font-bold px-2 py-1 rounded">{{ stats.accepted_units
+                        }}</span>
+                    <span class="text-sm font-bold text-slate-800">{{ stats.accepted_units_pct }}%</span>
+                </div>
+            </div>
+
+            <!-- Row 3 -->
+            <div class="p-4 flex items-center justify-between border-t border-slate-100">
+                <span class="font-bold text-slate-700 text-sm">Not Satisfied Donors</span>
+                <div class="flex items-center gap-2">
+                    <span class="bg-red-500 text-white text-xs font-bold px-2 py-1 rounded">{{ stats.not_satisfied
+                        }}</span>
+                    <span class="text-sm font-bold text-slate-800">{{ stats.not_satisfied_pct }}%</span>
+                </div>
+            </div>
+            <div class="p-4 flex items-center justify-between border-t border-slate-100">
+                <span class="font-bold text-slate-700 text-sm">Satisfied Donors</span>
+                <div class="flex items-center gap-2">
+                    <span class="bg-emerald-500 text-white text-xs font-bold px-2 py-1 rounded">{{ stats.satisfied
+                        }}</span>
+                    <span class="text-sm font-bold text-slate-800">{{ stats.satisfied_pct }}%</span>
+                </div>
+            </div>
+            <div class="p-4 flex items-center justify-between border-t border-slate-100">
+                <span class="font-bold text-slate-700 text-sm">Donors Who Did Survey</span>
+                <div class="flex items-center gap-2">
+                    <span class="bg-[#2D89C8] text-white text-xs font-bold px-2 py-1 rounded">{{ stats.survey_donors
+                        }}</span>
+                    <span class="text-sm font-bold text-slate-800">{{ stats.survey_donors_pct }}%</span>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Tabs Navigation -->
+    <div class="bg-white rounded-lg border border-slate-200 shadow-sm overflow-hidden min-h-[400px]">
+        <div class="border-b border-slate-200 overflow-x-auto">
+            <nav class="flex -mb-px" aria-label="Tabs">
+                <button @click="activeTab = 'donors'"
+                    :class="activeTab === 'donors' ? 'border-brand-500 text-brand-600' : 'border-transparent text-slate-500 hover:text-slate-700 hover:border-slate-300'"
+                    class="whitespace-nowrap py-4 px-6 border-b-2 font-bold text-sm">
+                    Donors
+                </button>
+                <button @click="activeTab = 'reactive'"
+                    :class="activeTab === 'reactive' ? 'border-brand-500 text-brand-600' : 'border-transparent text-slate-500 hover:text-slate-700 hover:border-slate-300'"
+                    class="whitespace-nowrap py-4 px-6 border-b-2 font-bold text-sm">
+                    Reactive Units
+                </button>
+                <button @click="activeTab = 'discarded'"
+                    :class="activeTab === 'discarded' ? 'border-brand-500 text-brand-600' : 'border-transparent text-slate-500 hover:text-slate-700 hover:border-slate-300'"
+                    class="whitespace-nowrap py-4 px-6 border-b-2 font-bold text-sm">
+                    Discarded Units
+                </button>
+                <button @click="activeTab = 'adverse'"
+                    :class="activeTab === 'adverse' ? 'border-brand-500 text-brand-600' : 'border-transparent text-slate-500 hover:text-slate-700 hover:border-slate-300'"
+                    class="whitespace-nowrap py-4 px-6 border-b-2 font-bold text-sm">
+                    Donation Adverse Reaction
+                </button>
+                <button @click="activeTab = 'satisfaction'"
+                    :class="activeTab === 'satisfaction' ? 'border-brand-500 text-brand-600' : 'border-transparent text-slate-500 hover:text-slate-700 hover:border-slate-300'"
+                    class="whitespace-nowrap py-4 px-6 border-b-2 font-bold text-sm">
+                    Donor Satisfaction
+                </button>
+                <button @click="activeTab = 'acknowledgment'"
+                    :class="activeTab === 'acknowledgment' ? 'border-brand-500 text-brand-600' : 'border-transparent text-slate-500 hover:text-slate-700 hover:border-slate-300'"
+                    class="whitespace-nowrap py-4 px-6 border-b-2 font-bold text-sm">
+                    Blood Order Acknowledgment
+                </button>
+            </nav>
+        </div>
+
+        <!-- Tab Contents -->
+        <div class="p-6">
+
+            <!-- Donors Tab -->
+            <div x-show="activeTab === 'donors'" class="space-y-4">
+                <h3 class="text-lg font-bold text-slate-800">Donors</h3>
+                <div class="overflow-x-auto">
+                    <table class="min-w-full divide-y divide-slate-100">
+                        <thead class="bg-white">
+                            <tr>
+                                <th class="px-6 py-3 text-left text-xs font-bold text-slate-900 uppercase">BloodNature
+                                </th>
+                                <th class="px-6 py-3 text-left text-xs font-bold text-slate-900 uppercase">
+                                    DonationReason</th>
+                                <th class="px-6 py-3 text-left text-xs font-bold text-slate-900 uppercase">Status</th>
+                                <th class="px-6 py-3 text-left text-xs font-bold text-slate-900 uppercase">Total</th>
+                            </tr>
+                        </thead>
+                        <tbody class="bg-white divide-y divide-slate-50">
+                            {% for d in donors_data %}
+                            <tr class="hover:bg-slate-50">
+                                <td class="px-6 py-4 text-xs text-slate-700">{{ d.nature }}</td>
+                                <td class="px-6 py-4 text-xs text-slate-700">{{ d.reason }}</td>
+                                <td class="px-6 py-4 text-xs text-slate-700">{{ d.status }}</td>
+                                <td class="px-6 py-4 text-xs font-bold text-slate-800">{{ d.total }}</td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <!-- Reactive Units Tab -->
+            <div x-show="activeTab === 'reactive'" class="space-y-4">
+                <h3 class="text-lg font-bold text-slate-800">Reactive Units</h3>
+                <div class="overflow-x-auto">
+                    <table class="min-w-full divide-y divide-slate-100">
+                        <thead class="bg-white">
+                            <tr>
+                                <th class="px-6 py-3 text-left text-xs font-bold text-slate-900 uppercase">BloodNature
+                                </th>
+                                <th class="px-6 py-3 text-left text-xs font-bold text-slate-900 uppercase">TestCode</th>
+                                <th class="px-6 py-3 text-left text-xs font-bold text-slate-900 uppercase">Test</th>
+                                <th class="px-6 py-3 text-left text-xs font-bold text-slate-900 uppercase">Total</th>
+                            </tr>
+                        </thead>
+                        <tbody class="bg-white divide-y divide-slate-50">
+                            {% for r in reactive_data %}
+                            <tr class="hover:bg-slate-50">
+                                <td class="px-6 py-4 text-xs text-slate-700">{{ r.nature }}</td>
+                                <td class="px-6 py-4 text-xs text-slate-700">{{ r.code }}</td>
+                                <td class="px-6 py-4 text-xs text-slate-700">{{ r.test }}</td>
+                                <td class="px-6 py-4 text-xs font-bold text-slate-800">{{ r.total }}</td>
+                            </tr>
+                            {% endfor %}
+                            <tr class="bg-slate-50 font-bold">
+                                <td colspan="3" class="px-6 py-4 text-xs text-right text-slate-800">Total Reactive Tests
+                                </td>
+                                <td class="px-6 py-4 text-xs text-slate-800 bg-orange-100">{{ stats.total_reactive_tests
+                                    }}</td>
+                            </tr>
+                            <tr class="bg-red-50 font-bold border-t border-red-100">
+                                <td colspan="3" class="px-6 py-4 text-xs text-right text-red-800">Total Reactive Units
+                                </td>
+                                <td class="px-6 py-4 text-xs text-white bg-red-500">{{ stats.total_reactive_units }}
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <!-- Discarded Units Tab -->
+            <div x-show="activeTab === 'discarded'" class="space-y-8">
+
+                <!-- Summary Table -->
+                <div class="space-y-4">
+                    <h3 class="text-lg font-bold text-slate-800">Discarded And Expired Components</h3>
+                    <div class="overflow-x-auto">
+                        <table class="min-w-full divide-y divide-slate-100">
+                            <thead class="bg-white">
+                                <tr>
+                                    <th class="px-6 py-3 text-left text-xs font-bold text-slate-900 uppercase w-1/3">
+                                        ComponentName</th>
+                                    <th class="px-6 py-3 text-left text-xs font-bold text-slate-900 uppercase w-1/3">
+                                        Status</th>
+                                    <th class="px-6 py-3 text-left text-xs font-bold text-slate-900 uppercase w-1/3">
+                                        Total</th>
+                                </tr>
+                            </thead>
+                            <tbody class="bg-white divide-y divide-slate-50">
+                                {% for item in discarded_summary %}
+                                <tr class="hover:bg-slate-50">
+                                    <td class="px-6 py-4 text-xs text-slate-700">{{ item.name }}</td>
+                                    <td class="px-6 py-4 text-xs text-slate-700">{{ item.status }}</td>
+                                    <td class="px-6 py-4 text-xs font-bold text-slate-800">{{ item.total }}</td>
+                                </tr>
+                                {% endfor %}
+                                <tr class="bg-slate-50 font-bold border-t border-slate-200">
+                                    <td colspan="2" class="px-6 py-4 text-xs text-center text-slate-800">Total
+                                        Components</td>
+                                    <td class="px-6 py-4 text-xs">
+                                        <span class="bg-[#2D89C8] text-white px-2 py-1 rounded">599</span>
+                                    </td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <!-- Details Table -->
+                <div class="space-y-4">
+                    <h3 class="text-lg font-bold text-slate-800">Discarded Details Components</h3>
+                    <div class="overflow-x-auto">
+                        <table class="min-w-full divide-y divide-slate-100">
+                            <thead class="bg-white">
+                                <tr>
+                                    <th class="px-6 py-3 text-left text-xs font-bold text-slate-900 uppercase w-1/3">
+                                        ComponentName</th>
+                                    <th class="px-6 py-3 text-left text-xs font-bold text-slate-900 uppercase w-1/3">
+                                        Status</th>
+                                    <th class="px-6 py-3 text-left text-xs font-bold text-slate-900 uppercase w-1/3">
+                                        Total</th>
+                                </tr>
+                            </thead>
+                            <tbody class="bg-white divide-y divide-slate-50">
+                                {% for item in discarded_details %}
+                                <tr class="hover:bg-slate-50 cursor-pointer group">
+                                    <td
+                                        class="px-6 py-3 text-[11px] font-bold text-emerald-700 group-hover:text-emerald-800">
+                                        {{ item.name }}</td>
+                                    <td
+                                        class="px-6 py-3 text-[11px] font-bold text-emerald-600 group-hover:text-emerald-700">
+                                        {{ item.status }}</td>
+                                    <td class="px-6 py-3 text-[11px] font-bold text-emerald-700">{{ item.total }}</td>
+                                </tr>
+                                {% endfor %}
+                                <tr class="bg-slate-50 font-bold border-t border-slate-200">
+                                    <td colspan="2" class="px-6 py-4 text-xs text-center text-slate-800">Total Discarded
+                                        Components</td>
+                                    <td class="px-6 py-4 text-xs">
+                                        <span class="bg-[#2D89C8] text-white px-2 py-1 rounded">460</span>
+                                    </td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+
+            </div>
+
+            <!-- Adverse Reaction Tab -->
+            <div x-show="activeTab === 'adverse'" class="space-y-8">
+
+                <!-- Summary Table -->
+                <div class="space-y-4">
+                    <h3 class="text-lg font-bold text-slate-800">Donation Adverse Reaction</h3>
+                    <div class="overflow-x-auto">
+                        <table class="min-w-full divide-y divide-slate-100">
+                            <thead class="bg-white">
+                                <tr>
+                                    <th class="px-6 py-3 text-left text-xs font-bold text-slate-900 uppercase w-2/3">
+                                        Type</th>
+                                    <th class="px-6 py-3 text-left text-xs font-bold text-slate-900 uppercase w-1/3">
+                                        Total</th>
+                                </tr>
+                            </thead>
+                            <tbody class="bg-white divide-y divide-slate-50">
+                                {% for item in adverse_summary %}
+                                <tr class="hover:bg-slate-50">
+                                    <td class="px-6 py-4 text-xs text-slate-700 uppercase">{{ item.type }}</td>
+                                    <td class="px-6 py-4 text-xs font-bold text-slate-800">{{ item.total }}</td>
+                                </tr>
+                                {% endfor %}
+                                <tr class="bg-slate-50 font-bold border-t border-slate-200">
+                                    <td class="px-6 py-4 text-xs text-slate-800">Total Donor Reaction</td>
+                                    <td class="px-6 py-4 text-xs">
+                                        <span class="bg-[#2D89C8] text-white px-2 py-1 rounded">4</span>
+                                    </td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <!-- Details Table -->
+                <div class="space-y-4">
+                    <div class="overflow-x-auto">
+                        <table class="min-w-full divide-y divide-slate-100">
+                            <thead class="bg-white">
+                                <tr>
+                                    <th class="px-6 py-3 text-left text-xs font-bold text-slate-900 uppercase">Code</th>
+                                    <th class="px-6 py-3 text-left text-xs font-bold text-slate-900 uppercase">DonorName
+                                    </th>
+                                    <th class="px-6 py-3 text-left text-xs font-bold text-slate-900 uppercase">DonorId
+                                    </th>
+                                    <th class="px-6 py-3 text-left text-xs font-bold text-slate-900 uppercase">
+                                        CreatedDate</th>
+                                </tr>
+                            </thead>
+                            <tbody class="bg-white divide-y divide-slate-50">
+                                {% for item in adverse_details %}
+                                <tr class="hover:bg-slate-50">
+                                    <td class="px-6 py-4 text-xs">
+                                        <span class="bg-[#2D89C8] text-white px-2 py-1 rounded text-[10px]">{{ item.code
+                                            }}</span>
+                                    </td>
+                                    <td class="px-6 py-4 text-xs text-slate-700 uppercase">{{ item.name }}</td>
+                                    <td class="px-6 py-4 text-xs text-slate-700">{{ item.id }}</td>
+                                    <td class="px-6 py-4 text-xs text-slate-600 font-mono">{{ item.date }}</td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Satisfaction Tab -->
+            <div x-show="activeTab === 'satisfaction'" class="space-y-8">
+
+                <!-- Survey Results Table -->
+                <div class="space-y-4">
+                    <h3 class="text-lg font-bold text-slate-800">Donor Satisfaction</h3>
+                    <div class="overflow-x-auto">
+                        <table class="min-w-full divide-y divide-slate-100">
+                            <thead class="bg-white">
+                                <tr>
+                                    <th class="px-6 py-3 text-left text-xs font-bold text-slate-900 uppercase w-1/3">
+                                        Question</th>
+                                    <th class="px-6 py-3 text-left text-xs font-bold text-slate-900 uppercase">Very
+                                        Dissatisfied</th>
+                                    <th class="px-6 py-3 text-left text-xs font-bold text-slate-900 uppercase">
+                                        Dissatisfied</th>
+                                    <th class="px-6 py-3 text-left text-xs font-bold text-slate-900 uppercase">OK</th>
+                                    <th class="px-6 py-3 text-left text-xs font-bold text-slate-900 uppercase">Satisfied
+                                    </th>
+                                    <th class="px-6 py-3 text-left text-xs font-bold text-slate-900 uppercase">Very
+                                        Satisfied</th>
+                                </tr>
+                            </thead>
+                            <tbody class="bg-white divide-y divide-slate-50">
+                                {% for item in satisfaction_summary %}
+                                <tr class="hover:bg-slate-50">
+                                    <td class="px-6 py-4 text-xs text-slate-700">{{ item.question }}</td>
+                                    <td class="px-6 py-4 text-xs text-slate-700">{{ item.vd }}</td>
+                                    <td class="px-6 py-4 text-xs text-slate-700">{{ item.d }}</td>
+                                    <td class="px-6 py-4 text-xs text-slate-700">{{ item.ok }}</td>
+                                    <td class="px-6 py-4 text-xs text-slate-700">{{ item.s }}</td>
+                                    <td class="px-6 py-4 text-xs text-slate-700">{{ item.vs }}</td>
+                                </tr>
+                                {% endfor %}
+                                <tr class="bg-slate-50 font-bold border-t border-slate-200">
+                                    <td class="px-6 py-4 text-xs text-slate-800">Not Satisfied Donors</td>
+                                    <td class="px-6 py-4 text-xs">
+                                        <span class="bg-red-500 text-white px-2 py-1 rounded">2</span>
+                                    </td>
+                                    <td colspan="2" class="px-6 py-4 text-xs text-right text-slate-800">Satisfied Donors
+                                    </td>
+                                    <td class="px-6 py-4 text-xs">
+                                        <span class="bg-emerald-500 text-white px-2 py-1 rounded">141</span>
+                                    </td>
+                                    <td class="px-6 py-4 text-xs text-right text-slate-800">Donors Who Did Survey <span
+                                            class="ml-2 bg-[#2D89C8] text-white px-2 py-1 rounded">143</span></td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <!-- Donors Not Satisfied Table -->
+                <div class="space-y-4">
+                    <h3 class="text-lg font-bold text-slate-800">Donors Not Satisfied</h3>
+                    <div class="overflow-x-auto">
+                        <table class="min-w-full divide-y divide-slate-100">
+                            <thead class="bg-white">
+                                <tr>
+                                    <th class="px-6 py-3 text-left text-xs font-bold text-slate-900 uppercase w-2/3">
+                                        Donation Code</th>
+                                    <th class="px-6 py-3 text-left text-xs font-bold text-slate-900 uppercase w-1/3">
+                                        Result</th>
+                                </tr>
+                            </thead>
+                            <tbody class="bg-white divide-y divide-slate-50">
+                                {% for item in dissatisfied_donors %}
+                                <tr class="hover:bg-slate-50">
+                                    <td class="px-6 py-4 text-xs text-brand-600 font-bold">{{ item.code }}</td>
+                                    <td class="px-6 py-4 text-xs text-slate-700">{{ item.result }}</td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+
+            </div>
+
+            <!-- Acknowledgement Tab -->
+            <div x-show="activeTab === 'acknowledgment'" class="space-y-4">
+                <h3 class="text-lg font-bold text-slate-800">Blood Order Acknowledgment Statistics</h3>
+                <div class="overflow-x-auto">
+                    <table class="min-w-full divide-y divide-slate-100">
+                        <thead class="bg-white">
+                            <tr>
+                                <th class="px-6 py-3 text-left text-xs font-bold text-slate-900 uppercase">Site / الفرع
+                                </th>
+                                <th class="px-6 py-3 text-left text-xs font-bold text-slate-900 uppercase">Component
+                                    Type</th>
+                                <th class="px-6 py-3 text-left text-xs font-bold text-slate-900 uppercase">Type</th>
+                                <th class="px-6 py-3 text-left text-xs font-bold text-slate-900 uppercase">Count</th>
+                                <th class="px-6 py-3 text-left text-xs font-bold text-slate-900 uppercase">%</th>
+                            </tr>
+                        </thead>
+                        <tbody class="bg-white divide-y divide-slate-50">
+                            {% for item in acknowledgment_summary %}
+                            <tr class="hover:bg-slate-50">
+                                <td class="px-6 py-4 text-xs">
+                                    <span
+                                        class="px-2 py-1 rounded text-white font-bold text-[10px] {% if item.site == 'SMC1' %}bg-[#2D89C8]{% else %}bg-orange-400{% endif %}">
+                                        {{ item.site }}
+                                    </span>
+                                </td>
+                                <td class="px-6 py-4 text-xs text-orange-600 font-bold uppercase">{{ item.component }}
+                                </td>
+                                <td class="px-6 py-4 text-xs">
+                                    <span
+                                        class="px-2 py-1 rounded text-white font-bold text-[10px] {% if item.status == 'Not Acknowledged' %}bg-red-500{% else %}bg-emerald-500{% endif %}">
+                                        {{ item.status }}
+                                    </span>
+                                </td>
+                                <td class="px-6 py-4 text-xs">
+                                    <span
+                                        class="px-2 py-1 rounded text-white font-bold text-[10px] {% if item.status == 'Not Acknowledged' %}bg-red-500{% else %}bg-emerald-500{% endif %}">
+                                        {{ item.count }}
+                                    </span>
+                                </td>
+                                <td class="px-6 py-4 text-xs text-slate-700">{{ item.pct }}</td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+        </div>
+    </div>
+</div>
+{% endblock %}
