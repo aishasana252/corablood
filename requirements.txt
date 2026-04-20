@@ -9,3 +9,6 @@ google-generativeai
 gunicorn
 whitenoise
 dj-database-url
+django-jazzmin
+django-filter
+requests
