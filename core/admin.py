@@ -89,3 +89,41 @@ class CustomUserAdmin(UserAdmin):
             ),
         }),
     )
+
+    def save_model(self, request, obj, form, change):
+        """
+        Override save to ensure custom fields are properly saved during user creation.
+        Django's UserAdmin sometimes skips custom fields on the 'add' form.
+        Also auto-sets is_staff=True if user has any clinical access permissions.
+        """
+        super().save_model(request, obj, form, change)
+        
+        if not change:
+            # This is a NEW user being created — re-apply custom fields from form data
+            custom_fields = [
+                'role', 'can_access_dashboard', 'can_access_donors', 'can_access_donations',
+                'can_access_settings', 'can_access_inventory', 'can_access_reports',
+                'can_access_clinical', 'can_access_orders', 'can_access_ai',
+                'is_staff', 'is_active',
+            ]
+            needs_save = False
+            for field in custom_fields:
+                if field in form.cleaned_data:
+                    current_val = getattr(obj, field, None)
+                    new_val = form.cleaned_data[field]
+                    if current_val != new_val:
+                        setattr(obj, field, new_val)
+                        needs_save = True
+            
+            # Auto-enable is_staff if any clinical access permission is granted
+            has_any_access = any([
+                obj.can_access_dashboard, obj.can_access_donors, obj.can_access_donations,
+                obj.can_access_settings, obj.can_access_inventory, obj.can_access_reports,
+                obj.can_access_clinical, obj.can_access_orders,
+            ])
+            if has_any_access and not obj.is_staff:
+                obj.is_staff = True
+                needs_save = True
+                
+            if needs_save:
+                obj.save()
