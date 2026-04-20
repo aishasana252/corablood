@@ -25,18 +25,17 @@ def staff_required(view_func):
             request.user.can_access_clinical,
             request.user.can_access_orders,
             request.user.can_access_dashboard,
-            request.user.is_staff
+            request.user.is_staff,
+            request.user.is_superuser
         ])
 
-        # Check if they are explicitly a donor
-        is_donor = getattr(request.user, 'role', '').lower() == 'donor'
-        is_staff_or_admin = request.user.is_staff or request.user.is_superuser
+        # Security check: If they are EXCLUSIVELY a donor (no clinical access), redirect to donor portal
+        is_donor_role = getattr(request.user, 'role', '').lower() == 'donor'
         
-        # If they are a Donor role AND not explicitly staff, they go to donor portal
-        if is_donor and not is_staff_or_admin:
+        if is_donor_role and not has_clinical_access:
             return redirect('portal:dashboard')
             
-        if not has_clinical_access and not is_staff_or_admin:
+        if not has_clinical_access:
             # Missing both flags and staff status
             messages.error(request, "You do not have permission to access the clinical system.")
             return redirect('logout')
