@@ -1,5 +1,6 @@
-from pathlib import Path
 import os
+import dj_database_url
+from pathlib import Path
 from dotenv import load_dotenv
 
 load_dotenv()
@@ -100,6 +101,7 @@ JAZZMIN_UI_TWEAKS = {
 MIDDLEWARE = [
     'corsheaders.middleware.CorsMiddleware',
     'django.middleware.security.SecurityMiddleware',
+    'whitenoise.middleware.WhiteNoiseMiddleware',
     'django.contrib.sessions.middleware.SessionMiddleware',
     'django.middleware.common.CommonMiddleware',
     'django.middleware.csrf.CsrfViewMiddleware',
@@ -129,9 +131,12 @@ TEMPLATES = [
 WSGI_APPLICATION = 'config.wsgi.application'
 
 # Database Configuration
-# We prioritize PostgreSQL if DB_HOST is provided in environment, 
-# otherwise fallback to SQLite on Windows or default Postgres on Linux.
-if os.environ.get('DB_HOST'):
+# We prioritize DATABASE_URL (Render environment)
+if os.environ.get('DATABASE_URL'):
+    DATABASES = {
+        'default': dj_database_url.config(conn_max_age=600, ssl_require=True)
+    }
+elif os.environ.get('DB_HOST'):
     DATABASES = {
         'default': {
             'ENGINE': 'django.db.backends.postgresql',
@@ -142,23 +147,12 @@ if os.environ.get('DB_HOST'):
             'PORT': os.environ.get('DB_PORT', '5432'),
         }
     }
-elif os.name == 'nt':
+else:
+    # Default to SQLite for local development
     DATABASES = {
         'default': {
             'ENGINE': 'django.db.backends.sqlite3',
             'NAME': BASE_DIR / 'db.sqlite3',
-        }
-    }
-else:
-    # Default Docker/Production fallback
-    DATABASES = {
-        'default': {
-            'ENGINE': 'django.db.backends.postgresql',
-            'NAME': os.environ.get('DB_NAME', 'corablood'),
-            'USER': os.environ.get('DB_USER', 'postgres'),
-            'PASSWORD': os.environ.get('DB_PASSWORD', 'postgres'),
-            'HOST': 'db',
-            'PORT': '5432',
         }
     }
 
@@ -176,9 +170,29 @@ USE_TZ = True
 
 STATIC_URL = 'static/'
 STATICFILES_DIRS = [BASE_DIR / 'static']
+STATIC_ROOT = BASE_DIR / 'staticfiles'
+
+# WhiteNoise storage for efficient caching of static files
+STATICFILES_STORAGE = 'whitenoise.storage.CompressedManifestStaticFilesStorage'
+
 MEDIA_URL = 'media/'
 MEDIA_ROOT = BASE_DIR / 'media'
 
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
 CORS_ALLOW_ALL_ORIGINS = True # For Dev
+
+# Django REST Framework Settings
+REST_FRAMEWORK = {
+    'DEFAULT_PAGINATION_CLASS': 'rest_framework.pagination.PageNumberPagination',
+    'PAGE_SIZE': 25,
+    'DEFAULT_FILTER_BACKENDS': [
+        'django_filters.rest_framework.DjangoFilterBackend',
+        'rest_framework.filters.SearchFilter',
+        'rest_framework.filters.OrderingFilter',
+    ],
+    'DEFAULT_PERMISSION_CLASSES': [
+        'rest_framework.permissions.IsAuthenticated',
+    ],
+}
+

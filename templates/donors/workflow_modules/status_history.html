@@ -1,0 +1,125 @@
+<!-- 14. Status History Tab -->
+<div x-show="currentTab === 'status_history'" class="animate-in fade-in slide-in-from-bottom-4 duration-500">
+    <div class="flex flex-col gap-6">
+        <!-- Header & Action -->
+        <h2 class="text-xl font-bold text-slate-800">Donation View</h2>
+        <div>
+            <button @click="getStatusHistory()"
+                class="px-5 py-2.5 bg-[#1e4e79] text-white font-medium shadow hover:bg-[#153a5c] transition-colors rounded-sm text-sm border border-[#112d46]">
+                Get Status History
+            </button>
+        </div>
+
+        <!-- Data Table -->
+        <div class="overflow-x-auto bg-white border border-slate-100 mt-2">
+            <table class="w-full text-left border-collapse text-sm text-slate-800">
+                <thead>
+                    <tr class="border-b-2 border-slate-100">
+                        <th class="py-3 px-4 font-bold">Status</th>
+                        <th class="py-3 px-4 font-bold">On</th>
+                        <th class="py-3 px-4 font-bold">By</th>
+                        <th class="py-3 px-4 font-bold">Note</th>
+                    </tr>
+                </thead>
+                <tbody class="divide-y divide-slate-100">
+                    <template x-for="item in statusLog" :key="item.status">
+                        <tr class="hover:bg-slate-50">
+                            <td class="py-3 px-4 text-[#1e4e79]" x-text="item.status"></td>
+                            <td class="py-3 px-4" x-text="item.on"></td>
+                            <td class="py-3 px-4" x-text="item.by"></td>
+                            <td class="py-3 px-4" x-text="item.note"></td>
+                        </tr>
+                    </template>
+                </tbody>
+            </table>
+        </div>
+    </div>
+    
+    <div class="mt-8 flex justify-end">
+        <button @click="completeTab('status_history'); switchTab('history')"
+            class="px-8 py-3 bg-[#e61726] text-white font-bold rounded-lg shadow-md hover:bg-[#c31320] transition-colors">
+            Continue to History
+        </button>
+    </div>
+</div>
+
+<script>
+    (function () {
+        console.log("Registering Status History Module...");
+        window.workflowModules.status_history = {
+            statusLog: [],
+            getStatusHistory() {
+                const history = [];
+                // Registration
+                history.push({
+                    status: 'New',
+                    on: this.formatDateTime(new Date()), // Ideally from workflow.created_at
+                    by: 'System Admin',
+                    note: ''
+                });
+
+                for (const tab of this.tabs) {
+                    if (tab.status === 'completed' || tab.status === 'open') {
+                        let by = 'Medical Staff';
+                        let on = this.formatDateTime(new Date());
+                        let note = '';
+                        let statusName = '';
+
+                        if (tab.id === 'questionnaire' && this.questionnaire) { 
+                            statusName = 'Questionair Completed'; 
+                            by = 'Donor'; 
+                        }
+                        else if (tab.id === 'vitals' && this.vitals && this.vitals.weight) { 
+                            statusName = 'Vital Signs completed'; 
+                            by = 'Medical Staff'; 
+                        }
+                        else if (tab.id === 'blood_draw' && this.withdrawal && this.withdrawal.drawn_start_time) {
+                            statusName = 'WithDraw Blood Completed';
+                            by = 'Phlebotomist';
+                            const end = this.withdrawal.drawn_end_time || 'Running...';
+                            note = `Start: ${this.withdrawal.drawn_start_time} | End: ${end}`;
+                        }
+                        else if (tab.id === 'lab_tests' && tab.status === 'completed') {
+                            statusName = 'Accepted'; // Or similar final status depending on outcome
+                            by = 'System';
+                            note = 'All LabTest done and negative';
+                        }
+                        else if (tab.id === 'label' && tab.status === 'completed') {
+                             statusName = 'Components Labeled';
+                             by = 'Lab Tech';
+                        }
+
+                        if(statusName) {
+                            history.push({ status: statusName, by: by, on: on, note: note });
+                        }
+                    }
+                }
+                
+                this.statusLog = history;
+            },
+            formatDateTime(d) {
+                const day = String(d.getDate()).padStart(2, '0');
+                const month = String(d.getMonth() + 1).padStart(2, '0');
+                const year = d.getFullYear();
+                
+                let hours = d.getHours();
+                const minutes = String(d.getMinutes()).padStart(2, '0');
+                const ampm = hours >= 12 ? 'PM' : 'AM';
+                hours = hours % 12;
+                hours = hours ? hours : 12; // the hour '0' should be '12'
+                const strTime = String(hours).padStart(2, '0') + ':' + minutes + ' ' + ampm;
+                
+                return `${day}/${month}/${year} ${strTime}`;
+            },
+            finishWorkflow() {
+                if (confirm("Complete this donation session?")) {
+                    this.completeTab('status_history');
+                    const historyTab = this.tabs.find(t => t.id === 'history');
+                    if (historyTab) historyTab.status = 'open';
+                    this.switchTab('history');
+                    window.scrollTo({ top: 0, behavior: 'smooth' });
+                }
+            }
+        };
+    })();
+</script>

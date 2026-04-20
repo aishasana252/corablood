@@ -5,19 +5,10 @@ class WorkflowService:
     @staticmethod
     def get_active_workflow(donor):
         return DonorWorkflow.objects.filter(
-            donor=donor, 
-            status__in=[
-                DonorWorkflow.Step.REGISTRATION,
-                DonorWorkflow.Step.QUESTIONNAIRE,
-                DonorWorkflow.Step.MEDICATION,
-                DonorWorkflow.Step.VITALS,
-                DonorWorkflow.Step.COLLECTION,
-                DonorWorkflow.Step.POST_DONATION,
-                DonorWorkflow.Step.ADVERSE_REACTION,
-                DonorWorkflow.Step.SURVEY,
-                DonorWorkflow.Step.LABS
-            ]
-        ).first()
+            donor=donor
+        ).exclude(
+            status=DonorWorkflow.Step.COMPLETED
+        ).order_by('-created_at').first()
 
     @staticmethod
     def start_workflow(donor, user=None):
@@ -28,7 +19,8 @@ class WorkflowService:
         
         return DonorWorkflow.objects.create(
             donor=donor,
-            status=DonorWorkflow.Step.QUESTIONNAIRE
+            status=DonorWorkflow.Step.QUESTIONNAIRE,
+            created_by=user
         )
 
     @staticmethod
@@ -151,6 +143,27 @@ class WorkflowService:
                 'drawn_start_time': data.get('drawn_start_time'),
                 'drawn_end_time': data.get('drawn_end_time'),
                 'segment_number': data.get('segment_number', ''),
+                # Apheresis fields
+                'procedure_type': data.get('procedure_type'),
+                'is_filtered': data.get('is_filtered', False),
+                'total_acd_used': data.get('total_acd_used'),
+                'actual_acd_to_donor': data.get('actual_acd_to_donor'),
+                'post_platelet_count': data.get('post_platelet_count'),
+                'post_hct': data.get('post_hct'),
+                'blood_volume_processed': data.get('blood_volume_processed'),
+                'total_saline_used': data.get('total_saline_used'),
+                'apheresis_start_time': data.get('apheresis_start_time'),
+                'apheresis_end_time': data.get('apheresis_end_time'),
+                'kit_lot_no': data.get('kit_lot_no'),
+                'kit_lot_expiry': data.get('kit_lot_expiry') or None,
+                'acd_lot_no': data.get('acd_lot_no'),
+                'acd_lot_expiry': data.get('acd_lot_expiry') or None,
+                'machine_name': data.get('machine_name'),
+                'platelets_collected_volume': data.get('platelets_collected_volume'),
+                'yield_of_platelets': data.get('yield_of_platelets'),
+                'volume_of_acd_in_platelets': data.get('volume_of_acd_in_platelets'),
+                'inventory_units_count': data.get('inventory_units_count', 1),
+                'donation_reaction': data.get('donation_reaction', False),
             }
         )
         
@@ -203,14 +216,14 @@ class WorkflowService:
 
     @staticmethod
     def submit_lab_results(workflow, viral_result, blood_group, user=None):
-        from .models import LabTest
+        from .models import LabResult
         
         # Create or update test result
-        test, created = LabTest.objects.update_or_create(
+        test, created = LabResult.objects.update_or_create(
             workflow=workflow,
+            test_name='Viral Screening',
             defaults={
-                'viral_status': viral_result,
-                'blood_group_result': blood_group,
+                'result_value': viral_result,
                 'technician': user,
                 'tested_at': timezone.now()
             }

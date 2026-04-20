@@ -1,0 +1,179 @@
+<!-- 7. Deferral Tab -->
+<div x-show="currentTab === 'deferral'" class="animate-in fade-in slide-in-from-bottom-4 duration-500">
+    <div class="flex justify-between items-start mb-8">
+        <div>
+            <h3 class="text-2xl font-bold text-slate-900">Donation View</h3>
+            <p class="text-slate-500">Header</p>
+        </div>
+    </div>
+
+    <div class="space-y-6">
+        <!-- Add Button -->
+        <div x-show="!deferralForm.show">
+            <button @click="deferralForm.show = true"
+                class="px-4 py-2 bg-red-500 hover:bg-red-600 text-white font-bold rounded shadow-sm transition-colors">
+                Add New Deferral
+            </button>
+        </div>
+
+        <!-- Add Deferral Form -->
+        <div x-show="deferralForm.show" class="bg-white p-6 border border-slate-200 rounded-lg shadow-sm space-y-4">
+
+            <!-- Title/Reason -->
+            <div>
+                <label class="block text-sm font-bold text-slate-700 mb-1">Title</label>
+                <input type="text" x-model="deferralForm.data.reason"
+                    class="w-full px-4 py-2 border border-slate-300 rounded focus:ring-red-500 focus:border-red-500"
+                    placeholder="Title Or Reason">
+            </div>
+
+            <!-- Donor Value -->
+            <div>
+                <label class="block text-sm font-bold text-slate-700 mb-1">Donor Value</label>
+                <input type="text" x-model="deferralForm.data.donor_value"
+                    class="w-full px-4 py-2 border border-slate-300 rounded focus:ring-red-500 focus:border-red-500"
+                    placeholder="Donor Value">
+            </div>
+
+            <!-- Reference Range -->
+            <div>
+                <label class="block text-sm font-bold text-slate-700 mb-1">Reference Range</label>
+                <input type="text" x-model="deferralForm.data.reference_range"
+                    class="w-full px-4 py-2 border border-slate-300 rounded focus:ring-red-500 focus:border-red-500"
+                    placeholder="Reference Range">
+            </div>
+
+            <!-- Duration & Type -->
+            <div class="flex items-center gap-4">
+                <div class="flex items-center gap-2">
+                    <label class="text-sm font-bold text-slate-700 whitespace-nowrap">NoOfDaysBlocked</label>
+
+                    <!-- Type Dropdown -->
+                    <select x-model="deferralForm.data.deferral_type"
+                        class="px-4 py-2 border border-slate-300 rounded focus:ring-red-500 focus:border-red-500 min-w-[120px]">
+                        <option value="TEMPORARY">Temporary</option>
+                        <option value="PERMANENT">Permenant</option>
+                    </select>
+
+                    <!-- Days Input (Only if Temporary) -->
+                    <input type="number" x-model="deferralForm.data.days_blocked"
+                        :disabled="deferralForm.data.deferral_type === 'PERMANENT'"
+                        class="px-4 py-2 border border-slate-300 rounded focus:ring-red-500 focus:border-red-500 w-40"
+                        placeholder="No Of Days Blocked">
+                </div>
+            </div>
+
+            <!-- Form Actions -->
+            <div class="flex gap-2 pt-2">
+                <button @click="saveDeferral()"
+                    class="px-6 py-2 bg-sky-500 hover:bg-sky-600 text-white font-bold rounded shadow-sm transition-colors">
+                    Save
+                </button>
+                <button @click="deferralForm.show = false"
+                    class="px-6 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold rounded shadow-sm transition-colors">
+                    cancel
+                </button>
+            </div>
+
+        </div>
+
+        <!-- Deferrals Table -->
+        <div class="bg-white border border-slate-200 rounded-lg overflow-hidden">
+            <table class="w-full text-left">
+                <thead>
+                    <tr class="bg-slate-50 border-b border-slate-200">
+                        <th class="px-6 py-3 text-xs font-bold text-slate-500 uppercase">Title</th>
+                        <th class="px-6 py-3 text-xs font-bold text-slate-500 uppercase">Donor Value</th>
+                        <th class="px-6 py-3 text-xs font-bold text-slate-500 uppercase">ReferenceRange</th>
+                        <th class="px-6 py-3 text-xs font-bold text-slate-500 uppercase">NoOfDaysBlocked</th>
+                        <th class="px-6 py-3 text-xs font-bold text-slate-500 uppercase">Type</th>
+                    </tr>
+                </thead>
+                <tbody class="divide-y divide-slate-100">
+                    <template x-for="deferral in deferralsList" :key="deferral.id">
+                        <tr class="hover:bg-slate-50">
+                            <td class="px-6 py-4 text-sm font-medium text-slate-900" x-text="deferral.reason">
+                            </td>
+                            <td class="px-6 py-4 text-sm text-red-600 font-bold" x-text="deferral.donor_value">
+                            </td>
+                            <td class="px-6 py-4 text-sm text-slate-600" x-text="deferral.reference_range"></td>
+                            <td class="px-6 py-4 text-sm text-red-600 font-bold" x-text="deferral.days_blocked">
+                            </td>
+                            <td class="px-6 py-4 text-sm text-slate-600" x-text="deferral.deferral_type"></td>
+                        </tr>
+                    </template>
+                    <tr x-show="deferralsList.length === 0">
+                        <td colspan="5" class="px-6 py-8 text-center text-slate-400">
+                            No active deferrals.
+                        </td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+
+        <!-- Continue Button -->
+        <div class="flex justify-end mt-4">
+            <button @click="completeTab('deferral')"
+                class="px-6 py-2 bg-slate-800 hover:bg-slate-900 text-white font-bold rounded shadow-lg transition-colors">
+                Continue to Pre-Separation
+            </button>
+        </div>
+    </div>
+</div>
+
+<script>
+    (function () {
+        console.log("Registering Deferral Module...");
+        window.workflowModules.deferral = {
+            async fetchDeferrals() {
+                try {
+                    const donorId = "{{ donor.id }}";
+                    const res = await fetch(`/api/deferrals/?donor=${donorId}`);
+                    if (res.ok) {
+                        this.deferralsList = await res.json();
+                    }
+                } catch (e) {
+                    console.error('Failed to fetch deferrals', e);
+                }
+            },
+            async saveDeferral() {
+                if (!this.deferralForm.data.reason) {
+                    alert('Please enter a Title/Reason');
+                    return;
+                }
+                const donorId = "{{ donor.id }}";
+                const payload = {
+                    ...this.deferralForm.data,
+                    donor: donorId,
+                    workflow: this.donationId || null
+                };
+                try {
+                    const res = await fetch('/api/deferrals/', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'X-CSRFToken': '{{ csrf_token }}'
+                        },
+                        body: JSON.stringify(payload)
+                    });
+                    if (res.ok) {
+                        await this.fetchDeferrals();
+                        this.deferralForm.show = false;
+                        this.deferralForm.data = {
+                            reason: '',
+                            donor_value: '',
+                            reference_range: '',
+                            days_blocked: 0,
+                            deferral_type: 'TEMPORARY'
+                        };
+                    } else {
+                        const data = await res.json();
+                        alert('Error saving deferral: ' + JSON.stringify(data));
+                    }
+                } catch (e) {
+                    alert('Network error saving deferral');
+                }
+            }
+        };
+    })();
+</script>

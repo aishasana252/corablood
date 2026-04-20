@@ -4,26 +4,31 @@ from django.shortcuts import render, redirect, get_object_or_404
 from django.http import JsonResponse
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required
+from core.decorators import staff_required
 
 from rest_framework import viewsets, status, decorators
 from rest_framework.response import Response
 from django.db import transaction
 from django.utils import timezone
 from .models import DonorWorkflow, Question, VitalLimit, BloodDraw, AdverseReaction, PostDonationSurvey, PreSeparation
-from .serializers import QuestionSerializer, VitalSignsSerializer, VitalLimitSerializer, WorkflowDetailSerializer, BloodDrawSerializer, AdverseReactionSerializer, PostDonationSurveySerializer, PreSeparationSerializer
+from .serializers import (
+    QuestionSerializer, VitalSignsSerializer, VitalLimitSerializer, 
+    WorkflowDetailSerializer, BloodDrawSerializer, AdverseReactionSerializer, 
+    PostDonationSurveySerializer, PreSeparationSerializer, BloodComponentSerializer
+)
 from .services import WorkflowService
 from .queue_api import WorkflowQueueViewSet
 
 # Settings Views
-@login_required
+@staff_required
 def settings_questionnaire(request):
     return render(request, 'clinical/settings_questionnaire.html')
 
-@login_required
+@staff_required
 def settings_vitals(request):
     return render(request, 'clinical/settings_vitals.html')
 
-@login_required
+@staff_required
 def settings_contraindications(request):
     from .models import EligibilityRule, DeferralReason, CollectionConfig, ProductSeparationRule
     
@@ -127,6 +132,8 @@ def settings_contraindications(request):
 
 
 class VitalLimitViewSet(viewsets.ModelViewSet):
+    from core.permissions import IsStaffOrClinicalAdmin
+    permission_classes = [IsStaffOrClinicalAdmin]
     queryset = VitalLimit.objects.all()
     serializer_class = VitalLimitSerializer
 
@@ -137,6 +144,8 @@ class VitalLimitViewSet(viewsets.ModelViewSet):
         return super().get_queryset()
 
 class QuestionViewSet(viewsets.ModelViewSet):
+    from core.permissions import IsStaffOrClinicalAdmin
+    permission_classes = [IsStaffOrClinicalAdmin]
     queryset = Question.objects.filter(is_active=True).order_by('order')
     serializer_class = QuestionSerializer
 
@@ -145,7 +154,55 @@ class QuestionViewSet(viewsets.ModelViewSet):
         # For settings page, we want to see ALL questions to manage them.
         return Question.objects.all().order_by('order')
 
+class BloodComponentViewSet(viewsets.ModelViewSet):
+    from core.permissions import IsStaffOrClinicalAdmin
+    permission_classes = [IsStaffOrClinicalAdmin]
+    from inventory.models import BloodComponent
+    queryset = BloodComponent.objects.all()
+    serializer_class = BloodComponentSerializer
+
+    @decorators.action(detail=True, methods=['post'])
+    def print_label(self, request, pk=None):
+        comp = self.get_object()
+        # In a real system, this might generate a PDF URL
+        comp.is_labeled = True
+        comp.label_printed_at = timezone.now()
+        comp.save()
+        return Response({'status': 'success', 'message': 'Label metadata updated.'})
+
+    @decorators.action(detail=True, methods=['post'])
+    def disposition(self, request, pk=None):
+        from inventory.models import BloodComponent
+        comp = self.get_object()
+        comp.status = BloodComponent.Status.AVAILABLE
+        comp.location = "Main Stock Fridge"
+        comp.modified_by = request.user
+        comp.save()
+        return Response({'status': 'success', 'message': 'Component moved to store.'})
+
+    @decorators.action(detail=True, methods=['post'])
+    def irradiate(self, request, pk=None):
+        comp = self.get_object()
+        if not comp.notes: comp.notes = ""
+        if "[IRRADIATED]" not in comp.notes:
+            comp.notes = (comp.notes + " [IRRADIATED]").strip()
+        comp.modified_by = request.user
+        comp.save()
+        return Response({'status': 'success', 'message': 'Component marked as irradiated.'})
+
+    @decorators.action(detail=True, methods=['post'])
+    def discard(self, request, pk=None):
+        from inventory.models import BloodComponent
+        comp = self.get_object()
+        comp.status = BloodComponent.Status.DISCARDED
+        comp.location = "Biohazard Disposal"
+        comp.modified_by = request.user
+        comp.save()
+        return Response({'status': 'success', 'message': 'Component discarded.'})
+
 class DonationWorkflowViewSet(viewsets.ReadOnlyModelViewSet):
+    from core.permissions import IsStaffOrClinicalAdmin
+    permission_classes = [IsStaffOrClinicalAdmin]
     queryset = DonorWorkflow.objects.all()
     serializer_class = WorkflowDetailSerializer
 
@@ -214,7 +271,7 @@ class DonationWorkflowViewSet(viewsets.ReadOnlyModelViewSet):
         if serializer.is_valid():
             vitals, reasons = WorkflowService.submit_vitals(workflow, serializer.validated_data, request.user)
             if vitals.passed:
-                return Response({'status': 'success'})
+                return Response({'status': 'success', 'next_step': 'collection'})
             else:
                 return Response({
                     'status': 'rejected',
@@ -255,10 +312,8 @@ class DonationWorkflowViewSet(viewsets.ReadOnlyModelViewSet):
             # Use Service Layer for consistency
             draw = WorkflowService.submit_blood_draw(workflow, data, request.user)
             
-            # Note: submit_blood_draw sets status to LABS, but view-specific flow 
-            # might want ADVERSE_REACTION (as per original view logic).
-            # Overriding to ADVERSE_REACTION for now as it's the next UI tab.
-            workflow.status = DonorWorkflow.Step.ADVERSE_REACTION
+            # Follow official sequence: COLLECTION -> POST_DONATION
+            workflow.status = DonorWorkflow.Step.POST_DONATION
             workflow.save()
 
             return Response({
@@ -275,6 +330,15 @@ class DonationWorkflowViewSet(viewsets.ReadOnlyModelViewSet):
                 'message': f"Server Error: {str(e)}", 
                 'traceback': traceback.format_exc()
             }, status=500)
+
+    @decorators.action(detail=True, methods=['post'])
+    def save_post_donation(self, request, pk=None):
+        workflow = self.get_object()
+        if workflow.status == DonorWorkflow.Step.POST_DONATION:
+            workflow.status = DonorWorkflow.Step.ADVERSE_REACTION
+            workflow.save()
+        return Response({'status': 'success', 'message': 'Post-donation care completed.'})
+
     @decorators.action(detail=True, methods=['post'])
     def save_adverse_reaction(self, request, pk=None):
         workflow = self.get_object()
@@ -289,8 +353,8 @@ class DonationWorkflowViewSet(viewsets.ReadOnlyModelViewSet):
                 workflow.adverse_reaction.delete()
             
             # Progress Step
-            if workflow.status == DonorWorkflow.Step.ADVERSE_REACTION or workflow.status == DonorWorkflow.Step.COLLECTION:
-                 workflow.status = DonorWorkflow.Step.SURVEY
+            if workflow.status in [DonorWorkflow.Step.ADVERSE_REACTION, DonorWorkflow.Step.COLLECTION, DonorWorkflow.Step.POST_DONATION]:
+                 workflow.status = DonorWorkflow.Step.PRE_SEPARATION
                  workflow.save()
                  
             return Response({'status': 'success', 'message': 'No adverse reaction recorded.'})
@@ -306,8 +370,8 @@ class DonationWorkflowViewSet(viewsets.ReadOnlyModelViewSet):
             )
             
             
-            if workflow.status == DonorWorkflow.Step.ADVERSE_REACTION or workflow.status == DonorWorkflow.Step.COLLECTION:
-                workflow.status = DonorWorkflow.Step.SURVEY
+            if workflow.status in [DonorWorkflow.Step.ADVERSE_REACTION, DonorWorkflow.Step.COLLECTION, DonorWorkflow.Step.POST_DONATION]:
+                workflow.status = DonorWorkflow.Step.PRE_SEPARATION
                 workflow.save()
             
             return Response({'status': 'success', 'message': 'Adverse reaction recorded.'})
@@ -339,18 +403,28 @@ class DonationWorkflowViewSet(viewsets.ReadOnlyModelViewSet):
         workflow = self.get_object()
         data = request.data
         
-        from .serializers import MedicationRecordSerializer
-        from .models import MedicationRecord
+        from .serializers import DonorMedicationRecordSerializer
+        from .models import DonorMedicationRecord
         
-        serializer = MedicationRecordSerializer(data=data)
+        serializer = DonorMedicationRecordSerializer(data=data)
         if serializer.is_valid():
-            MedicationRecord.objects.update_or_create(
+            # Handle M2M medications if needed (DonorMedicationRecord has medications_taken as M2M)
+            # update_or_create doesn't handle M2M directly well in all versions, 
+            # so we use set() if provided.
+            
+            instance, created = DonorMedicationRecord.objects.update_or_create(
                 workflow=workflow,
-                defaults=serializer.validated_data
+                defaults={
+                    'is_on_medication': serializer.validated_data.get('is_on_medication'),
+                    'other_medication_notes': serializer.validated_data.get('other_medication_notes'),
+                    'notes': serializer.validated_data.get('notes'),
+                    'pharmacist_reviewed': True,
+                    'deferred_due_to_medication': serializer.validated_data.get('deferred_due_to_medication', False)
+                }
             )
             
             # Progress Step
-            if workflow.status == DonorWorkflow.Step.QUESTIONNAIRE or workflow.status == DonorWorkflow.Step.MEDICATION:
+            if workflow.status == DonorWorkflow.Step.QUESTIONNAIRE or workflow.status == DonorWorkflow.Step.MEDICATION or workflow.status == 'MEDICATION':
                  workflow.status = DonorWorkflow.Step.VITALS
                  workflow.save()
             
@@ -361,19 +435,16 @@ class DonationWorkflowViewSet(viewsets.ReadOnlyModelViewSet):
     @decorators.action(detail=True, methods=['post'])
     def save_pre_separation(self, request, pk=None):
         workflow = self.get_object()
+        action = request.data.get('action')
         
-        # Get or create PreSeparation model
         pre_sep, created = PreSeparation.objects.get_or_create(workflow=workflow)
         
-        # Check action type (save, receive, verify)
-        action = request.data.get('action', 'save')
-        
-        # Update fields
+        # Update fields using serializer for robustness
         serializer = PreSeparationSerializer(pre_sep, data=request.data, partial=True)
         if serializer.is_valid():
             instance = serializer.save()
             
-            # Handle timestamps based on action
+            # Handle timestamps and audit info based on action
             if action == 'receive' and not instance.received_at:
                 instance.received_at = timezone.now()
                 instance.received_by = request.user
@@ -388,11 +459,10 @@ class DonationWorkflowViewSet(viewsets.ReadOnlyModelViewSet):
                     instance.received_at = timezone.now()
                     instance.received_by = request.user
                 
-                # Final Approval Logic (Independent of Verification)
                 instance.is_approved = True
                 instance.save()
                 
-                # Advance Workflow
+                # Advance Workflow status
                 if workflow.status == DonorWorkflow.Step.PRE_SEPARATION:
                     workflow.status = DonorWorkflow.Step.COMPONENTS
                     workflow.save()
@@ -402,8 +472,7 @@ class DonationWorkflowViewSet(viewsets.ReadOnlyModelViewSet):
                 'message': 'Pre-separation data saved.',
                 'data': PreSeparationSerializer(instance).data
             })
-        else:
-            return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+        return Response(serializer.errors, status=400)
 
     @decorators.action(detail=True, methods=['post'])
     def submit_lab_result(self, request, pk=None):
@@ -451,36 +520,6 @@ class DonationWorkflowViewSet(viewsets.ReadOnlyModelViewSet):
         )
         return Response({'status': 'success', 'message': 'Order created.'})
         
-    @decorators.action(detail=True, methods=['post'])
-    def save_pre_separation(self, request, pk=None):
-        workflow = self.get_object()
-        data = request.data
-        
-        # Get or Create
-        pre_sep, created = PreSeparation.objects.get_or_create(workflow=workflow)
-        
-        # Update Checkboxes
-        if 'unit_label_check' in data: pre_sep.unit_label_check = data['unit_label_check']
-        if 'donor_sample_label_check' in data: pre_sep.donor_sample_label_check = data['donor_sample_label_check']
-        if 'unit_temp_check' in data: pre_sep.unit_temp_check = data['unit_temp_check']
-        if 'visual_inspection' in data: pre_sep.visual_inspection = data['visual_inspection']
-        
-        # Update Measurements & Info
-        if 'volume_ml' in data: pre_sep.volume_ml = data['volume_ml']
-        if 'bag_lot_no' in data: pre_sep.bag_lot_no = data['bag_lot_no']
-        if 'bag_type' in data: pre_sep.bag_type = data['bag_type']
-        if 'bag_expiry_date' in data: pre_sep.bag_expiry_date = data['bag_expiry_date'] or None
-        if 'notes' in data: pre_sep.notes = data['notes']
-
-        # Status Actions (Legacy/Alternative logic if needed, but primarily saving form now)
-        if data.get('action') == 'save':
-            # Maybe mark as verified if all checks pass? 
-            # For now just save.
-            pass
-
-        pre_sep.save()
-        
-        return Response({'status': 'success', 'data': PreSeparationSerializer(pre_sep).data})
 
     def get_serializer_class(self):
         if self.action == 'list':
@@ -499,25 +538,147 @@ class DonationWorkflowViewSet(viewsets.ReadOnlyModelViewSet):
         """Return the list of blood components generated for this workflow."""
         workflow = self.get_object()
         from inventory.models import BloodComponent
-        comps = BloodComponent.objects.filter(workflow=workflow).order_by('id')
-        
-        data = [{
-            'id': c.id,
-            'type': c.component_type,
-            'volume': c.volume_ml,
-            'unit_number': c.unit_number,
-            'expiration_date': c.expiration_date.strftime('%Y-%m-%d %H:%M') if c.expiration_date else 'N/A',
-            'status': c.status,
-            'visual_inspection': c.visual_inspection,
-            'room_temp': c.room_temp_check,
-            'notes': c.notes,
-            'is_labeled': bool('Label printed' in str(c.notes)),
-            'component_type': c.component_type,
-            'volume_ml': c.volume_ml,
-            'storage_time': c.storage_time_after_prep.strftime('%H:%M') if c.storage_time_after_prep else '',
-        } for c in comps]
-        
-        return Response(data)
+        from .serializers import BloodComponentSerializer
+        comps = BloodComponent.objects.filter(workflow=workflow).select_related(
+            'created_by', 'modified_by', 'approved_by'
+        ).order_by('id')
+        serializer = BloodComponentSerializer(comps, many=True)
+        return Response(serializer.data)
+
+    @decorators.action(detail=True, methods=['get'])
+    def status_history(self, request, pk=None):
+        """Return real audit log for each workflow step, with actual user names and timestamps."""
+        workflow = self.get_object()
+
+        def fmt(dt):
+            """Format datetime to DD/MM/YYYY HH:MM AM/PM"""
+            if not dt:
+                return '-'
+            import datetime
+            if isinstance(dt, datetime.time):
+                # Convert time-only to 12h format
+                return datetime.datetime.combine(datetime.date.today(), dt).strftime('%I:%M %p')
+            try:
+                from django.utils import timezone
+                local_dt = timezone.localtime(dt)
+                return local_dt.strftime('%d/%m/%Y %I:%M %p')
+            except Exception:
+                return str(dt)
+
+        def uname(user):
+            if not user:
+                return 'System'
+            return user.get_full_name() or user.username
+
+        log = []
+
+        # 1. Registration — workflow creator (created_at)
+        log.append({
+            'status': 'Registration',
+            'by': uname(workflow.created_by),
+            'time': fmt(workflow.created_at),
+        })
+
+        # 2. Questionnaire — reviewed_by
+        try:
+            q = workflow.questionnaire
+            log.append({
+                'status': 'Questionnaire',
+                'by': uname(q.reviewed_by),
+                'time': fmt(q.created_at),
+            })
+        except Exception:
+            pass
+
+        # 3. Vital Signs — examiner
+        try:
+            from .models import VitalSigns
+            v = VitalSigns.objects.filter(workflow=workflow).first()
+            if v:
+                log.append({
+                    'status': 'Vital Signs Completed',
+                    'by': uname(v.examiner),
+                    'time': fmt(v.created_at),
+                })
+        except Exception:
+            pass
+
+        # 4. Blood Draw — examiner
+        try:
+            bd = workflow.blood_draw
+            # Build time: prefer created_at; show start/end as supplemental if available
+            main_time = fmt(bd.created_at)
+            if bd.drawn_start_time and bd.drawn_end_time:
+                main_time = f"{fmt(bd.drawn_start_time)} – {fmt(bd.drawn_end_time)}"
+            elif bd.drawn_start_time:
+                main_time = fmt(bd.drawn_start_time)
+            log.append({
+                'status': 'Blood Draw Completed',
+                'by': uname(bd.examiner),
+                'time': main_time,
+            })
+        except Exception:
+            pass
+
+        # 5. Post-Donation Care — recorded_by
+        try:
+            pdc = workflow.post_donation_care
+            log.append({
+                'status': 'Post-Donation Care Completed',
+                'by': uname(pdc.recorded_by),
+                'time': fmt(pdc.created_at),
+            })
+        except Exception:
+            pass
+
+        # 6. Adverse Reaction — examiner
+        try:
+            ar = workflow.adverse_reaction
+            log.append({
+                'status': 'Adverse Reaction Recorded',
+                'by': uname(ar.examiner),
+                'time': fmt(ar.created_at),
+            })
+        except Exception:
+            pass
+
+        # 7. Pre-Separation — received_by
+        try:
+            ps = workflow.pre_separation
+            log.append({
+                'status': 'Pre-Separation',
+                'by': uname(ps.received_by),
+                'time': fmt(ps.received_at or ps.created_at),
+            })
+        except Exception:
+            pass
+
+        # 8. Components — created_by of first component
+        try:
+            first_comp = workflow.components.select_related('created_by').first()
+            if first_comp:
+                log.append({
+                    'status': 'Components Separated',
+                    'by': uname(first_comp.created_by),
+                    'time': fmt(first_comp.manufactured_at),
+                })
+        except Exception:
+            pass
+
+        # 9. Lab Results — technician
+        try:
+            from .models import LabResult
+            first_result = LabResult.objects.filter(workflow=workflow).select_related('technician').first()
+            if first_result:
+                log.append({
+                    'status': 'Lab Results',
+                    'by': uname(first_result.technician),
+                    'time': fmt(first_result.created_at),
+                })
+        except Exception:
+            pass
+
+        return Response(log)
 
     @decorators.action(detail=True, methods=['post'])
     def separate_components(self, request, pk=None):
@@ -532,8 +693,8 @@ class DonationWorkflowViewSet(viewsets.ReadOnlyModelViewSet):
             # Update Status to LABS (Next step)
             # Or COMPLETED if that's the end of processing
             # Assuming 'LABS' is next.
-            if workflow.status != DonorWorkflow.Step.LABS and workflow.status != DonorWorkflow.Step.COMPLETED:
-                workflow.status = DonorWorkflow.Step.LABS
+            if workflow.status != DonorWorkflow.Step.ATTACHMENT and workflow.status != DonorWorkflow.Step.COMPLETED:
+                workflow.status = 'ATTACHMENT' if hasattr(DonorWorkflow.Step, 'ATTACHMENT') else 'LABS'
                 workflow.save()
 
             return Response({
@@ -542,7 +703,7 @@ class DonationWorkflowViewSet(viewsets.ReadOnlyModelViewSet):
                 'components': [{
                     'id': c.id,
                     'type': c.component_type,
-                    'volume': c.volume_ml,
+                    'volume': c.volume,
                     'unit_number': c.unit_number,
                     'expiration_date': c.expiration_date.strftime('%Y-%m-%d %H:%M') if c.expiration_date else 'N/A',
                     'status': c.status,
@@ -565,6 +726,18 @@ class DonationWorkflowViewSet(viewsets.ReadOnlyModelViewSet):
                 'status': 'error',
                 'error': f"{str(e)} \n {traceback.format_exc()}"
             }, status=500)
+
+    @decorators.action(detail=True, methods=['post'])
+    def update_status(self, request, pk=None):
+        """Manually update the workflow status from frontend."""
+        workflow = self.get_object()
+        new_status = request.data.get('status')
+        
+        if new_status:
+            workflow.status = new_status
+            workflow.save()
+            return Response({'status': 'success', 'new_status': workflow.status})
+        return Response({'status': 'error', 'message': 'No status provided'}, status=400)
 
     @decorators.action(detail=True, methods=['get'])
     def get_attachments(self, request, pk=None):
@@ -598,7 +771,7 @@ class DonationWorkflowViewSet(viewsets.ReadOnlyModelViewSet):
         except Exception as e:
              return Response({'status': 'error', 'error': str(e)}, status=400)
 
-@login_required
+@staff_required
 def start_donation(request, donor_id):
     if request.method == 'POST':
         donor = get_object_or_404(Donor, pk=donor_id)
@@ -614,7 +787,7 @@ def start_donation(request, donor_id):
         return redirect('donor_workflow', pk=donor.pk)
     return redirect('donor_list')
 
-@login_required
+@staff_required
 def queue_questionnaire(request):
     # Donors who passed Profile Approval (Ready for Q)
     workflows = DonorWorkflow.objects.filter(status=DonorWorkflow.Step.QUESTIONNAIRE).order_by('created_at')
@@ -623,7 +796,7 @@ def queue_questionnaire(request):
         'queue_step': 'QUESTIONNAIRE'
     })
 
-@login_required
+@staff_required
 def queue_profile(request):
     # Donors newly INITIATED (Waiting for Profile Approval)
     workflows = DonorWorkflow.objects.filter(status=DonorWorkflow.Step.REGISTRATION).order_by('created_at')
@@ -632,32 +805,32 @@ def queue_profile(request):
         'queue_step': 'REGISTRATION'
     })
 
-@login_required
+@staff_required
 def queue_vitals(request):
     return render(request, 'workflow/queue_vitals.html', {'queue_step': 'VITALS'})
 
-@login_required
+@staff_required
 def queue_collection(request):
     return render(request, 'workflow/queue_collection.html', {'queue_step': 'COLLECTION'})
     return render(request, 'workflow/queue_collection.html')
 
-@login_required
+@staff_required
 def lab_dashboard(request):
     # Fetch all workflows in LABS state
     pending_labs = DonorWorkflow.objects.filter(status=DonorWorkflow.Step.LABS).select_related('donor', 'blood_draw').order_by('created_at')
     return render(request, 'labs/dashboard.html', {'samples': pending_labs})
 
-@login_required
+@staff_required
 def infinity_list(request):
     return render(request, 'labs/dashboard.html') # Stub
 
-@login_required
+@staff_required
 def ortho_list(request):
     return render(request, 'labs/dashboard.html') # Stub
 
 
 
-@login_required
+@staff_required
 def settings_deferral(request):
     from .models import DeferralReason
     
@@ -695,7 +868,7 @@ def settings_deferral(request):
     return render(request, 'clinical/settings_deferral.html', {'deferrals': deferrals})
 
 
-@login_required
+@staff_required
 def modification_requests_list(request):
     from .models import ModificationRequest
     
@@ -705,7 +878,7 @@ def modification_requests_list(request):
     return render(request, 'clinical/modification_requests.html', {'requests': requests})
 
 
-@login_required
+@staff_required
 def add_component_manual(request):
     from .models import ProductSeparationRule
     
@@ -728,7 +901,7 @@ def add_component_manual(request):
     })
 
 
-@login_required
+@staff_required
 def donation_certificate_report(request):
     from .models import DonorWorkflow
     
@@ -748,7 +921,7 @@ def donation_certificate_report(request):
     return render(request, 'clinical/donation_certificate_report.html', context)
 
 
-@login_required
+@staff_required
 def questionnaire_failed_list(request):
     # Donors who were deferred specifically during Questionnaire
     # Ideally tracked by 'status=DEFERRED' AND 'last_step=QUESTIONNAIRE' 
@@ -760,7 +933,7 @@ def questionnaire_failed_list(request):
         'queue_step': 'DEFERRED'
     })
 
-@login_required
+@staff_required
 def blood_drawn_completed_list(request):
     # Donors who completed Blood Draw (waiting for Labs or just historical log)
     # Status is typically 'LABS' or 'COMPLETED' if just finished draw
@@ -772,11 +945,11 @@ def blood_drawn_completed_list(request):
         'queue_step': 'COMPLETED_DRAW'
     })
 
-@login_required
+@staff_required
 def donation_list(request):
     return render(request, 'donations/list.html')
 
-@login_required
+@staff_required
 def patient_donors_report(request):
     from .models import DonorWorkflow
     
@@ -815,7 +988,7 @@ def patient_donors_report(request):
         'blood_units': blood_units
     })
 
-@login_required
+@staff_required
 def pending_verification(request):
     from .models import DonorWorkflow
     
@@ -843,7 +1016,7 @@ def pending_verification(request):
         'pending_verification': pending_verification_items
     })
 
-@login_required
+@staff_required
 def disposition_to_store(request):
     from .models import DonorWorkflow
     from datetime import timedelta
@@ -885,7 +1058,7 @@ def disposition_to_store(request):
         'components': components_list
     })
 
-@login_required
+@staff_required
 def store_report(request):
     # Mock aggregation for Store Report
     # Real implementation would use: Component.objects.values('blood_group', 'component_type').annotate(qty=Count('id'))
@@ -934,7 +1107,7 @@ def store_report(request):
         }
     })
 
-@login_required
+@staff_required
 def component_details(request):
     # Mock data for Component Details Report
     from datetime import timedelta
@@ -980,7 +1153,7 @@ def component_details(request):
         'components': components
     })
 
-@login_required
+@staff_required
 def discarded_units(request):
     # Mock data for Discarded Units Report
     from datetime import timedelta
@@ -1028,7 +1201,7 @@ def discarded_units(request):
         'components': discarded_comp
     })
 
-@login_required
+@staff_required
 def expired_units(request):
     # Mock data for Expired Units Report
     from datetime import timedelta
@@ -1046,7 +1219,7 @@ def expired_units(request):
         'components': components
     })
     
-@login_required
+@staff_required
 def cryo_units(request):
     # Mock data for Cryo Units Report
     from datetime import timedelta
@@ -1066,7 +1239,7 @@ def cryo_units(request):
         'components': components
     })
 
-@login_required
+@staff_required
 def component_culture(request):
     # Mock data for Component Culture Report
     from datetime import timedelta
@@ -1088,7 +1261,7 @@ def component_culture(request):
         'components': components
     })
 
-@login_required
+@staff_required
 def component_culture_view(request, request_id):
     # Mock data for Component Culture Detail View
     details = {
@@ -1122,7 +1295,7 @@ def component_culture_view(request, request_id):
         'req': details
     })
 
-@login_required
+@staff_required
 def component_culture_pending(request):
     # Mock data for Pending Lists
     # ... (Keep existing implementation) ...
@@ -1157,7 +1330,7 @@ def component_culture_pending(request):
         'pending_second_review': pending_second_review
     })
 
-@login_required
+@staff_required
 def patient_bg_discrepancy(request):
     # Mock data for Patient BG Discrepancy
     discrepancies = [
@@ -1168,7 +1341,7 @@ def patient_bg_discrepancy(request):
         'discrepancies': discrepancies
     })
 
-@login_required
+@staff_required
 def discrepancy_alarms(request):
     # Mock data for Discrepancy Alarms
     alarms = [
@@ -1249,7 +1422,7 @@ def discrepancy_alarms(request):
 
 # --- New Reports Module Views ---
 
-@login_required
+@staff_required
 def monthly_report(request):
     # Mock Statistics
     stats = {
@@ -1384,7 +1557,7 @@ def monthly_report(request):
         'acknowledgment_summary': acknowledgment_summary
     })
 
-@login_required
+@staff_required
 def inventory_checkup(request):
     """
     Inventory CheckUp View with mock data.
@@ -1447,7 +1620,7 @@ def inventory_checkup(request):
         'difference_units': difference_units,
     })
 
-@login_required
+@staff_required
 def component_near_expired(request):
     """
     Component Near Expired View with mock data.
@@ -1473,7 +1646,7 @@ def component_near_expired(request):
         'units': units,
     })
 
-@login_required
+@staff_required
 def issued_units_summary(request):
     """
     Issued Units Summary view with mock data.
@@ -1525,7 +1698,7 @@ def issued_units_summary(request):
         'blood_group_summary': blood_group_summary,
     })
 
-@login_required
+@staff_required
 def ortho_summary(request):
     """
     Ortho Report Summary view with mock data.
@@ -1550,7 +1723,7 @@ def ortho_summary(request):
         'summary_data': summary_data
     })
 
-@login_required
+@staff_required
 def ortho_results_smc1(request):
     """
     Ortho Results - SMC1 View.
@@ -1622,7 +1795,7 @@ def ortho_results_smc1(request):
         'title': 'Ortho Results [ الفرع الأول ]'
     })
 
-@login_required
+@staff_required
 def ortho_results_smc2(request):
     """
     Ortho Results - SMC2 View.
@@ -1647,7 +1820,7 @@ def ortho_results_smc2(request):
         'title': 'Ortho Results [ الفرع الثاني ]'
     })
 
-@login_required
+@staff_required
 def infinity_results(request):
     """
     Infinity Results View.
@@ -1709,7 +1882,7 @@ def infinity_results(request):
     })
 
 # Blood Order Process Views
-@login_required
+@staff_required
 def blood_requests_old(request):
     """
     Blood Requests Listing View.
@@ -1736,14 +1909,14 @@ def blood_requests_old(request):
     ]
     return render(request, 'blood_process/blood_requests_list.html', {'requests': requests})
 
-@login_required
+@staff_required
 def blood_request_create(request):
     """
     New Blood Request Form View.
     """
     return render(request, 'blood_process/blood_request_form.html')
 
-@login_required
+@staff_required
 def blood_order_listing_bb(request):
     """
     Blood Order Listing BB View.
@@ -1775,7 +1948,7 @@ def blood_order_listing_bb(request):
 
     return render(request, 'blood_process/smc2_order_listing.html', {'orders': orders})
 
-@login_required
+@staff_required
 def blood_order_detail(request, order_code):
     """
     Blood Order Detail View (Tabbed Interface).
@@ -1800,7 +1973,7 @@ def blood_order_detail(request, order_code):
         'crossmatches': crossmatches
     })
 
-@login_required
+@staff_required
 def crossmatch_unit(request, order_id):
     if request.method == 'POST':
         from orders.models import BloodOrder
@@ -1821,7 +1994,7 @@ def crossmatch_unit(request, order_id):
         return redirect('blood_order_detail', order_code=f"ORD-{order.id}")
     return redirect('blood_order_listing_bb')
 
-@login_required
+@staff_required
 def dispense_unit(request, crossmatch_id):
     if request.method == 'POST':
         from orders.models import Crossmatch
@@ -1838,14 +2011,14 @@ def dispense_unit(request, crossmatch_id):
         return redirect('blood_order_detail', order_code=f"ORD-{xm.order.id}")
     return redirect('blood_order_listing_bb')
 
-@login_required
+@staff_required
 def smc2_orders_listing(request):
     # For now, showing same orders. In reality, filter by Site = SMC2
     # But since we renamed SMC2 to "Branch 2", we should filter by that if Site field exists.
     # Assuming all orders are visible for now.
     return blood_order_listing_bb(request)
 
-@login_required
+@staff_required
 def transfusion_orders(request):
     from orders.models import BloodOrder
     
@@ -1875,7 +2048,7 @@ def transfusion_orders(request):
 
     return render(request, 'blood_process/transfusion_orders.html', {'orders': orders})
 
-@login_required
+@staff_required
 def unit_crossmatch_report(request):
     from orders.models import Crossmatch
     
@@ -1897,7 +2070,7 @@ def unit_crossmatch_report(request):
         
     return render(request, 'reports/unit_crossmatch_report.html', {'items': items, 'title': 'Unit Crossmatch Report'})
 
-@login_required
+@staff_required
 def emergency_issue_list(request):
     # Mock data for Issue Requests List
     requests = []
@@ -1930,7 +2103,7 @@ def emergency_issue_list(request):
         'requests': requests
     })
 
-@login_required
+@staff_required
 def emergency_issue_create(request):
     # Form view for new Emergency Issue Request
     return render(request, 'clinical/emergency_issue_form.html')
@@ -1942,7 +2115,7 @@ def emergency_issue_create(request):
 from django.views.decorators.http import require_POST
 from django.views.decorators.csrf import csrf_exempt
 
-@login_required
+@staff_required
 @require_POST
 def component_print_label(request, component_id):
     """
@@ -1958,25 +2131,21 @@ def component_print_label(request, component_id):
     except BloodComponent.DoesNotExist:
         return JsonResponse({'status': 'error', 'error': 'Component not found'}, status=404)
 
-    # Mark as labeled (we add a simple flag via notes if no dedicated field exists)
-    printed_at = timezone.now().strftime('%Y-%m-%d %H:%M')
-    # Store label-printed info in notes if no dedicated field
-    if not component.notes:
-        component.notes = f'Label printed at {printed_at}'
-    elif 'Label printed' not in component.notes:
-        component.notes += f' | Label printed at {printed_at}'
-    component.save(update_fields=['notes'])
+    # Mark as labeled
+    component.is_labeled = True
+    component.label_printed_at = timezone.now()
+    component.save()
 
     return JsonResponse({
         'status': 'success',
         'message': f'Label printed for {component.unit_number}',
-        'printed_at': printed_at,
+        'printed_at': component.label_printed_at.strftime('%Y-%m-%d %H:%M'),
         'component_id': component.id,
         'unit_number': component.unit_number,
     })
 
 
-@login_required
+@staff_required
 @require_POST
 def complete_labeling(request, workflow_id):
     """
@@ -1995,3 +2164,22 @@ def complete_labeling(request, workflow_id):
         workflow.save()
 
     return JsonResponse({'status': 'success', 'message': 'Components moved to storage. Workflow advanced to Labs.'})
+
+@staff_required
+@require_POST
+def complete_workflow(request, workflow_id):
+    """
+    Mark the entire workflow as COMPLETED.
+    Called automatically when the admin reaches the final History tab.
+    """
+    from .models import DonorWorkflow
+    from django.shortcuts import get_object_or_404
+    import json
+
+    workflow = get_object_or_404(DonorWorkflow, pk=workflow_id)
+    
+    if workflow.status != DonorWorkflow.Step.COMPLETED:
+        workflow.status = DonorWorkflow.Step.COMPLETED
+        workflow.save()
+
+    return JsonResponse({'status': 'success', 'message': 'Donation workflow marked as COMPLETED.'})

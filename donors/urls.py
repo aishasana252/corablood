@@ -20,6 +20,7 @@ urlpatterns = [
     # Appointments (Admin)
     path('appointments/', views.appointments_list, name='appointments_list'),
     path('appointments/<int:pk>/action/', views.appointment_action, name='appointment_action'),
+    path('appointments/<int:pk>/workflow/', views.appointment_workflow, name='appointment_workflow'),
     
     # API
     path('', include(router.urls)),

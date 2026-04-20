@@ -1,0 +1,182 @@
+<!-- 10. Attachment Tab -->
+<div x-show="currentTab === 'attachment'" class="animate-in fade-in slide-in-from-bottom-4 duration-500">
+    <div class="flex justify-between items-start mb-8">
+        <div>
+            <h3 class="text-2xl font-bold text-slate-900">Attachment</h3>
+            <p class="text-slate-500">Upload consent forms or external documents.</p>
+        </div>
+    </div>
+
+    <div>
+        <!-- Upload Form -->
+        <div class="space-y-4 mb-8">
+            <div>
+                <label class="block text-sm font-medium text-slate-700 mb-1">Title</label>
+                <input type="text" x-model="attachmentForm.title"
+                    class="w-full rounded-xl border-slate-300 focus:border-brand-500 focus:ring-brand-500"
+                    placeholder="Title">
+            </div>
+            <div>
+                <label class="block text-sm font-medium text-slate-700 mb-1">Notes</label>
+                <textarea x-model="attachmentForm.notes" rows="2"
+                    class="w-full rounded-xl border-slate-300 focus:border-brand-500 focus:ring-brand-500"
+                    placeholder="Description"></textarea>
+            </div>
+            <div>
+                <label class="block text-sm font-medium text-slate-700 mb-1">File</label>
+                <div class="flex items-center gap-2">
+                    <input type="file" x-ref="attachmentFile" class="block w-full text-sm text-slate-500
+                        file:mr-4 file:py-2 file:px-4
+                        file:rounded-full file:border-0
+                        file:text-sm file:font-semibold
+                        file:bg-brand-50 file:text-brand-700
+                        hover:file:bg-brand-100
+                        " />
+                </div>
+            </div>
+            <div class="flex gap-2">
+                <button @click="uploadAttachment()" :disabled="submitting"
+                    class="px-4 py-2 bg-brand-600 text-white rounded-lg hover:bg-brand-700 disabled:opacity-50">
+                    <span x-show="submitting">Uploading...</span>
+                    <span x-show="!submitting">Save</span>
+                </button>
+                <button @click="attachmentForm = {title: '', notes: ''}; $refs.attachmentFile.value = ''"
+                    class="px-4 py-2 bg-slate-100 text-slate-600 rounded-lg hover:bg-slate-200">
+                    Cancel
+                </button>
+            </div>
+        </div>
+
+        <!-- Attachment Listing -->
+        <h4 class="text-md font-bold text-slate-700 mb-3 border-b pb-2 flex justify-between items-center">
+            <span>Attachment Listing</span>
+            <button @click="fetchAttachments()" class="text-brand-600 hover:text-brand-800">
+                <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                        d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                </svg>
+            </button>
+        </h4>
+        <div class="overflow-x-auto">
+            <table class="min-w-full divide-y divide-slate-200">
+                <thead class="bg-slate-50">
+                    <tr>
+                        <th class="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">
+                            #</th>
+                        <th class="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">
+                            Title</th>
+                        <th class="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">
+                            Notes</th>
+                        <th class="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">
+                            File</th>
+                        <th class="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">
+                            Date</th>
+                        <th class="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">
+                            Actions</th>
+                    </tr>
+                </thead>
+                <tbody class="bg-white divide-y divide-slate-200">
+                    <template x-for="(att, index) in attachments" :key="att.id">
+                        <tr>
+                            <td class="px-6 py-4 whitespace-nowrap text-sm text-slate-500" x-text="index + 1"></td>
+                            <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-slate-900"
+                                x-text="att.title"></td>
+                            <td class="px-6 py-4 text-sm text-slate-500" x-text="att.notes"></td>
+                            <td class="px-6 py-4 whitespace-nowrap text-sm text-brand-600">
+                                <a :href="att.file_url" target="_blank" class="hover:underline"
+                                    x-text="att.file_name"></a>
+                            </td>
+                            <td class="px-6 py-4 whitespace-nowrap text-sm text-slate-500">
+                                <div x-text="new Date(att.created_at).toLocaleDateString()"></div>
+                                <div class="text-xs text-slate-400"
+                                    x-text="new Date(att.created_at).toLocaleTimeString()"></div>
+                            </td>
+                            <td class="px-6 py-4 whitespace-nowrap text-sm text-slate-500">
+                                <!-- Delete not impl yet -->
+                            </td>
+                        </tr>
+                    </template>
+                    <tr x-show="attachments.length === 0">
+                        <td colspan="6" class="px-6 py-10 text-center text-slate-500">No attachments found.</td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <!-- Navigation -->
+    <div class="flex justify-end gap-3 pt-6 border-t mt-6">
+        <button @click="switchTab('components')"
+            class="px-6 py-2.5 bg-white border border-slate-300 text-slate-700 font-semibold rounded-xl hover:bg-slate-50 transition-all shadow-sm">
+            Back
+        </button>
+        <button @click="completeTab('attachment'); switchTab('label')"
+            class="px-6 py-2.5 bg-slate-900 text-white font-semibold rounded-xl hover:bg-slate-800 transition-all shadow-lg shadow-slate-900/20 flex items-center gap-2">
+            Next: Label
+        </button>
+    </div>
+</div>
+
+<script>
+    (function () {
+        console.log("Registering Attachment Module...");
+        window.workflowModules.attachment = {
+            attachments: [],
+            attachmentForm: {
+                title: '',
+                notes: ''
+            },
+            async fetchAttachments() {
+                try {
+                    const res = await fetch(`/api/donations/${this.donationId}/get_attachments/`);
+                    if (res.ok) {
+                        const data = await res.json();
+                        this.attachments = data.data;
+                    }
+                } catch (e) {
+                    console.error("Failed to fetch attachments", e);
+                }
+            },
+            async uploadAttachment() {
+                const fileInput = this.$refs.attachmentFile;
+                if (!this.attachmentForm.title) {
+                    alert("Please enter a title");
+                    return;
+                }
+                if (!fileInput.files || fileInput.files.length === 0) {
+                    alert("Please select a file");
+                    return;
+                }
+
+                this.submitting = true;
+                const formData = new FormData();
+                formData.append('title', this.attachmentForm.title);
+                formData.append('notes', this.attachmentForm.notes);
+                formData.append('file', fileInput.files[0]);
+
+                try {
+                    const res = await fetch(`/api/donations/${this.donationId}/upload_attachment/`, {
+                        method: 'POST',
+                        headers: { 'X-CSRFToken': '{{ csrf_token }}' },
+                        body: formData
+                    });
+
+                    const data = await res.json();
+                    if (res.ok) {
+                        this.attachmentForm = { title: '', notes: '' };
+                        fileInput.value = '';
+                        this.fetchAttachments();
+                        alert("Attachment uploaded successfully!");
+                    } else {
+                        alert("Error: " + (data.error || data.message || "Upload failed"));
+                    }
+                } catch (e) {
+                    console.error(e);
+                    alert("Network error during upload");
+                } finally {
+                    this.submitting = false;
+                }
+            }
+        };
+    })();
+</script>

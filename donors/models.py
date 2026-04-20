@@ -59,7 +59,16 @@ class Donor(models.Model):
     def __str__(self):
         return f"{self.full_name} ({self.national_id})"
     
+    class Meta:
+        indexes = [
+            models.Index(fields=['national_id']),
+            models.Index(fields=['full_name']),
+            models.Index(fields=['mobile']),
+            models.Index(fields=['created_at']),
+        ]
+
     def calculate_age(self):
+
         import datetime
         if not self.date_of_birth:
             return 0

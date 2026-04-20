@@ -3,13 +3,19 @@ from rest_framework.routers import DefaultRouter
 from . import views
 from .views import component_print_label, complete_labeling
 
+from .api_views import WorkflowStateAPIView, WorkflowStepDetailAPIView
+
 router = DefaultRouter()
 router.register(r'api/donations', views.DonationWorkflowViewSet, basename='donation-api')
+router.register(r'api/components', views.BloodComponentViewSet, basename='components-api')
 router.register(r'api/workflow/queue', views.WorkflowQueueViewSet, basename='workflow-queue') # New Queue API
 router.register(r'api/questions', views.QuestionViewSet, basename='questions')
 router.register(r'api/vital-limits', views.VitalLimitViewSet, basename='vital-limits')
 
 urlpatterns = [
+    # Modern Decoupled APIs
+    path('api/v2/workflow/<int:donation_id>/state/', WorkflowStateAPIView.as_view(), name='workflow-state-api'),
+    path('api/v2/workflow/<int:donation_id>/step/<str:step_slug>/', WorkflowStepDetailAPIView.as_view(), name='workflow-step-api'),
     path('reports/cc-pending-view/', views.component_culture_pending, name='cc_pending_view'), # Unique Path
     path('start/<int:donor_id>/', views.start_donation, name='start_donation'),
     path('', include(router.urls)), # Expose API endpoints
@@ -67,6 +73,7 @@ urlpatterns = [
     # Component Label API (called from Labeling tab in workflow)
     path('api/components/<int:component_id>/print_label/', component_print_label, name='component_print_label'),
     path('api/workflows/<int:workflow_id>/complete_labeling/', complete_labeling, name='complete_labeling'),
+    path('api/workflows/<int:workflow_id>/complete_workflow/', views.complete_workflow, name='complete_workflow'),
 
     # Lab Results Module
     path('results/ortho-smc1/', views.ortho_results_smc1, name='ortho_results_smc1'),

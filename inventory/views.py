@@ -1,9 +1,10 @@
 from django.shortcuts import render
 from django.contrib.auth.decorators import login_required
+from core.decorators import staff_required
 from django.db.models import Count, Q
 from .models import BloodComponent
 
-@login_required
+@staff_required
 def stock_dashboard(request):
     # Aggregation
     stats = BloodComponent.objects.values('component_type', 'status').annotate(count=Count('id'))
@@ -35,10 +36,10 @@ def stock_dashboard(request):
         'recent_units': recent_units
     })
 
-@login_required
+@staff_required
 def separation_dashboard(request):
     return render(request, 'inventory/separation.html')
 
-@login_required
+@staff_required
 def processing_rules(request):
     return render(request, 'dashboard.html') # Stub

@@ -1,16 +1,17 @@
 from django.shortcuts import render, get_object_or_404, redirect
 from django.contrib.auth.decorators import login_required
+from core.decorators import staff_required
 from django.contrib import messages
 from .models import BloodOrder, Crossmatch
 from .services import OrderService
 from inventory.models import BloodComponent
 
-@login_required
+@staff_required
 def order_list(request):
     orders = BloodOrder.objects.all().order_by('-created_at')
     return render(request, 'orders/list.html', {'orders': orders})
 
-@login_required
+@staff_required
 def create_order(request):
     if request.method == 'POST':
         data = {
@@ -28,14 +29,14 @@ def create_order(request):
         
     return render(request, 'orders/create.html')
 
-@login_required
+@staff_required
 def order_detail(request, pk):
     order = get_object_or_404(BloodOrder, pk=pk)
     # Suggestions
     suggestions = OrderService.find_compatible_units(order)
     return render(request, 'orders/detail.html', {'order': order, 'suggestions': suggestions})
 
-@login_required
+@staff_required
 def crossmatch_action(request, order_id, unit_id):
     if request.method == 'POST':
         order = get_object_or_404(BloodOrder, pk=order_id)

@@ -1,0 +1,96 @@
+<!-- 15. History Tab -->
+<div x-show="currentTab === 'history'" class="animate-in fade-in slide-in-from-bottom-4 duration-500">
+    <div class="flex flex-col gap-6">
+        <div>
+            <button @click="fetchHistory()"
+                class="px-5 py-2.5 bg-[#1e4e79] text-white font-medium shadow hover:bg-[#153a5c] transition-colors rounded-sm text-sm border border-[#112d46]">
+                Get History
+            </button>
+        </div>
+
+        <!-- Data Table -->
+        <div class="overflow-x-auto bg-white border border-slate-100 mt-2">
+            <table class="w-full text-left border-collapse text-sm text-slate-800 whitespace-nowrap">
+                <thead>
+                    <tr class="border-b-2 border-slate-100">
+                        <th class="py-3 px-4 font-bold">#</th>
+                        <th class="py-3 px-3 font-bold">Height</th>
+                        <th class="py-3 px-3 font-bold">Weight</th>
+                        <th class="py-3 px-3 font-bold">HGB</th>
+                        <th class="py-3 px-3 font-bold">Pulse</th>
+                        <th class="py-3 px-3 font-bold">BloodPressure</th>
+                        <th class="py-3 px-3 font-bold">Temp</th>
+                        <th class="py-3 px-3 font-bold">BloodType</th>
+                        <th class="py-3 px-3 font-bold">PatientName</th>
+                        <th class="py-3 px-3 font-bold">DonorName</th>
+                        <th class="py-3 px-3 font-bold">Arm</th>
+                        <th class="py-3 px-3 font-bold">fUnitVol</th>
+                        <th class="py-3 px-3 font-bold">sUnitVol</th>
+                        <th class="py-3 px-3 font-bold">tUnitVol</th>
+                        <th class="py-3 px-3 font-bold">BloodNature</th>
+                        <th class="py-3 px-3 font-bold">Operation</th>
+                        <th class="py-3 px-3 font-bold">ModifiedDate</th>
+                        <th class="py-3 px-3 font-bold">By</th>
+                    </tr>
+                </thead>
+                <tbody class="divide-y divide-slate-100">
+                    <!-- Showing only the 1st (Latest) record as requested -->
+                    <template x-for="(donation, index) in (historyStats.timeline ? historyStats.timeline.slice(0, 1) : [])" :key="donation.id">
+                        <tr class="hover:bg-slate-50">
+                            <td class="py-3 px-4 text-slate-500" x-text="index + 1"></td>
+                            <td class="py-3 px-3" x-text="donation.vitals.height"></td>
+                            <td class="py-3 px-3" x-text="donation.vitals.weight"></td>
+                            <td class="py-3 px-3" x-text="donation.vitals.hgb"></td>
+                            <td class="py-3 px-3" x-text="donation.vitals.pulse"></td>
+                            <td class="py-3 px-3" x-text="donation.vitals.bp"></td>
+                            <td class="py-3 px-3" x-text="donation.vitals.temp"></td>
+                            <td class="py-3 px-3" x-text="donation.blood_group"></td>
+                            <td class="py-3 px-3" x-text="donation.draw.patient_name || ''"></td>
+                            <td class="py-3 px-3 uppercase text-slate-600 font-semibold" x-text="donation.donor_name"></td>
+                            <td class="py-3 px-3" x-text="donation.draw.arm"></td>
+                            <td class="py-3 px-3" x-text="donation.draw.f_vol"></td>
+                            <td class="py-3 px-3" x-text="donation.draw.s_vol"></td>
+                            <td class="py-3 px-3" x-text="donation.draw.t_vol"></td>
+                            <td class="py-3 px-3" x-text="donation.draw.blood_nature"></td>
+                            <td class="py-3 px-3" x-text="index === 0 ? 'Edit' : 'New'"></td>
+                            <td class="py-3 px-3 text-slate-500 text-xs" x-text="donation.date"></td>
+                            <td class="py-3 px-3" x-text="donation.by"></td>
+                        </tr>
+                    </template>
+                </tbody>
+            </table>
+            
+            <div x-show="!historyStats.timeline || historyStats.timeline.length === 0" class="p-8 text-center text-slate-500">
+                Click "Get History" to load records.
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+    (function () {
+        console.log("Registering History Module...");
+        window.workflowModules.history = {
+            async fetchHistory() {
+                try {
+                    const res = await fetch(`/donors/api/donors/{{ donor.id }}/history_stats/`);
+                    if (res.ok) {
+                        this.historyStats = await res.json();
+                    }
+                    
+                    // Mark the donation as COMPLETED on the backend
+                    await fetch(`/api/workflows/${this.donationId}/complete_workflow/`, {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'X-CSRFToken': '{{ csrf_token }}'
+                        }
+                    });
+                    
+                } catch (e) {
+                    console.error('Failed to fetch history', e);
+                }
+            }
+        };
+    })();
+</script>

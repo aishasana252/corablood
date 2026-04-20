@@ -1,0 +1,15 @@
+<!-- 13. Self Exclusion Tab -->
+<div x-show="currentTab === 'self_exclusion'" class="animate-in fade-in slide-in-from-bottom-4 duration-500">
+    <div class="flex justify-between items-start mb-8">
+        <div>
+            <h3 class="text-2xl font-bold text-slate-900">Self Exclusion</h3>
+            <p class="text-slate-500">Donor post-donation confidential exclusion.</p>
+        </div>
+    </div>
+    <div class="p-8 text-center border-2 border-dashed border-slate-200 rounded-2xl bg-slate-50">
+        <p class="text-slate-400 font-bold mb-4">No self-exclusion request.</p>
+        <button @click="completeTab('self_exclusion'); switchTab('status_history')"
+            class="px-8 py-3 bg-brand-600 text-white rounded-xl shadow-lg shadow-brand-500/30 font-bold hover:bg-brand-700 transition">Continue
+            to Status History</button>
+    </div>
+</div>

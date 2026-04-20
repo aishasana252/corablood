@@ -1,0 +1,363 @@
+<!-- 2. Questionnaire Tab -->
+<div x-show="currentTab === 'questionnaire'" class="animate-in fade-in slide-in-from-bottom-4 duration-500">
+    <!-- QR Code Header -->
+    <div class="flex justify-center mb-8 border-b border-slate-100 pb-6">
+        <div class="flex flex-col items-center cursor-pointer group">
+            <div
+                class="flex items-center gap-2 text-slate-700 font-bold mb-2 group-hover:text-brand-600 transition-colors">
+                <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                        d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                </svg>
+                <span>Load Questionnaire QR Code</span>
+            </div>
+            <div
+                class="w-32 h-32 bg-white border-2 border-slate-200 rounded-xl flex items-center justify-center shadow-sm group-hover:border-brand-500 group-hover:shadow-md transition-all">
+                <svg class="w-16 h-16 text-slate-300" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5"
+                        d="M12 4v1m6 11h2m-6 0h-2v4h2v-4zM5 14v4h4v-4H5zM15 5h4v4h-4V5zM5 5h4v4H5V5z" />
+                </svg>
+            </div>
+        </div>
+    </div>
+
+    <!-- Donor Portal Response Alert -->
+    <template x-if="Object.keys(answers).some(k => answers[k] !== null)">
+        <div class="mb-6 bg-blue-50 border border-blue-200 rounded-xl p-4 flex gap-4 items-center">
+            <div class="w-10 h-10 bg-blue-100 rounded-full flex items-center justify-center text-blue-600">
+                <svg class="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                        d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                </svg>
+            </div>
+            <div>
+                <h4 class="font-bold text-blue-900">Donor Portal Responses Loaded</h4>
+                <p class="text-xs text-blue-700">The donor has answered these questions through the portal.
+                    Please verify if needed.</p>
+            </div>
+        </div>
+    </template>
+
+    <div class="flex justify-between items-start mb-4">
+        <div>
+            <h3 class="text-2xl font-bold text-slate-900">Donor Questionnaire</h3>
+            <p class="text-slate-500">Mandatory health screening questions.</p>
+        </div>
+        <div class="flex gap-2">
+            <button x-show="!isQuestionsEditable" @click="isQuestionsEditable = true"
+                class="px-4 py-2 bg-white text-slate-700 border border-slate-200 hover:bg-slate-50 font-bold rounded-lg transition-all">
+                Edit Answers
+            </button>
+            <button x-show="isQuestionsEditable" @click="passAll()"
+                class="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white font-bold rounded-lg transition-all shadow-md flex items-center gap-2">
+                <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" />
+                </svg>
+                Pass All
+            </button>
+        </div>
+    </div>
+
+    <div class="space-y-4 max-h-[400px] overflow-y-auto pr-2 mb-8">
+        <template x-if="questions.length === 0">
+            <div class="text-center py-10">
+                <p class="text-slate-400">Loading questions...</p>
+                <button @click="fetchQuestions()" class="text-brand-600 text-sm font-bold mt-2">Retry</button>
+            </div>
+        </template>
+
+        <template x-for="q in questions" :key="q.id">
+            <div
+                class="p-4 bg-slate-50 rounded-xl border border-slate-100 flex flex-col md:flex-row md:items-center justify-between gap-4 transition-colors hover:bg-slate-100">
+                <div class="flex-1 text-right" dir="rtl">
+                    <div class="flex items-center justify-end gap-2 mb-1">
+                        <span class="font-bold text-slate-900" x-text="q.text_ar"></span>
+                        <span class="text-xs font-mono text-slate-400" x-text="'#' + q.id"></span>
+                    </div>
+                    <p class="text-xs text-slate-500 text-left" dir="ltr" x-text="q.text_en"></p>
+                </div>
+                <div class="flex gap-4">
+                    <label class="flex items-center gap-2 cursor-pointer p-2 rounded-lg transition-all"
+                        :class="answers[q.id] === 'Yes' ? 'bg-red-100 ring-1 ring-red-400' : 'bg-white border hover:border-slate-300'">
+                        <input type="radio" :name="'q_' + q.id" value="Yes" x-model="answers[q.id]"
+                            :disabled="!isQuestionsEditable" class="w-4 h-4 text-brand-600 disabled:opacity-50">
+                        <span class="text-sm font-bold"
+                            :class="answers[q.id] === 'Yes' ? 'text-red-800' : 'text-slate-600'">YES</span>
+                    </label>
+                    <label class="flex items-center gap-2 cursor-pointer p-2 rounded-lg transition-all"
+                        :class="answers[q.id] === 'No' ? 'bg-green-100 ring-1 ring-green-400' : 'bg-white border hover:border-slate-300'">
+                        <input type="radio" :name="'q_' + q.id" value="No" x-model="answers[q.id]"
+                            :disabled="!isQuestionsEditable" class="w-4 h-4 text-green-600 disabled:opacity-50">
+                        <span class="text-sm font-bold"
+                            :class="answers[q.id] === 'No' ? 'text-green-800' : 'text-slate-600'">NO</span>
+                    </label>
+                </div>
+            </div>
+        </template>
+    </div>
+
+    <!-- Other Questions & Declaration -->
+    <div class="border-t border-slate-200 pt-6 space-y-6">
+        <!-- Other Questions Textarea -->
+        <div>
+            <label class="block text-right text-sm font-bold text-slate-700 mb-2">أسئلة إضافية أو أسباب أخرى
+                لرفض التبرع (Other Questions)</label>
+            <textarea x-model="questionnaire.additional_notes"
+                class="w-full h-24 p-3 border border-slate-300 rounded-xl focus:ring-2 focus:ring-brand-500 text-right"
+                placeholder="..."></textarea>
+        </div>
+
+        <!-- Declaration Box -->
+        <div class="bg-amber-50 border border-amber-200 rounded-xl p-4 text-right" dir="rtl">
+            <p class="text-xs md:text-sm text-slate-800 leading-relaxed font-medium">
+                أقر أنا الموقع أدناه بأنني قرأت وفهمت جميع بنود النشرة التثقيفية و أجبت على الأسئلة الموجهه لي
+                في هذه الوثيقة بصدق و أن تبرعت بوحدة دم كاملة و أنا على علم بأن دمي سيستخدم في علاج المرضى و أنا
+                على علم بأن دمي لن يستخدم في حال تبين وجود أي أمراض معدية...
+                <br><br>
+                كما أن وافقت على إجراء الفحوصات اللازمة لضمان سلامة الدم للمريض.
+            </p>
+        </div>
+
+        <!-- Donor Signature View (If portal submitted) -->
+        <template
+            x-if="!isQuestionsEditable && questionnaire && questionnaire.signature_data && questionnaire.signature_data.length > 50">
+            <div class="bg-sky-50 border border-sky-100 rounded-2xl p-6 flex flex-col items-end gap-3 shadow-inner">
+                <span class="text-xs font-bold text-sky-600 uppercase tracking-widest flex items-center gap-2">
+                    Verified Donor Signature
+                    <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                            d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04M12 2.944a11.955 11.955 0 01-8.618 3.04m0 0a11.955 11.955 0 00-3.382 8.58c0 5.89 4.778 10.667 10.667 10.667m12-10.667a11.955 11.955 0 00-3.382-8.58M12 2.944a11.954 11.954 0 00-8.618 3.04" />
+                    </svg>
+                </span>
+                <div
+                    class="bg-white border-2 border-slate-200 rounded-xl p-4 flex justify-center items-center shadow-inner w-full md:w-96">
+                    <img :src="questionnaire.signature_data" alt="Donor Signature"
+                        class="max-h-32 object-contain bg-white">
+                </div>
+            </div>
+        </template>
+
+        <template
+            x-if="!isQuestionsEditable && (!questionnaire || !questionnaire.signature_data || questionnaire.signature_data.length <= 50)">
+            <div class="bg-amber-50 border border-amber-100 rounded-2xl p-4 flex flex-col items-end gap-2">
+                <span class="text-xs font-bold text-amber-600 uppercase tracking-widest">No Signature Provided</span>
+                <span class="text-sm text-slate-600">The donor completed the questionnaire but did not leave a
+                    signature.</span>
+            </div>
+        </template>
+
+        <!-- Interactive Signature Pad -->
+        <div class="flex flex-col items-end" x-show="isQuestionsEditable" x-data="{
+            drawing: false,
+            context: null,
+            
+            initCanvas() {
+                const canvas = this.$refs.signatureCanvas;
+                this.context = canvas.getContext('2d');
+                
+                // Set canvas resolution for sharper lines
+                const rect = canvas.getBoundingClientRect();
+                canvas.width = rect.width;
+                canvas.height = rect.height;
+                
+                this.context.lineWidth = 2;
+                this.context.lineCap = 'round';
+                this.context.strokeStyle = '#000';
+            },
+            
+            startDrawing(e) {
+                this.drawing = true;
+                this.draw(e);
+            },
+            
+            stopDrawing() {
+                this.drawing = false;
+                this.context.beginPath();
+            },
+            
+            draw(e) {
+                if (!this.drawing) return;
+                
+                const canvas = this.$refs.signatureCanvas;
+                const rect = canvas.getBoundingClientRect();
+                const x = (e.clientX || e.touches[0].clientX) - rect.left;
+                const y = (e.clientY || e.touches[0].clientY) - rect.top;
+                
+                this.context.lineTo(x, y);
+                this.context.stroke();
+                this.context.beginPath();
+                this.context.moveTo(x, y);
+            },
+            
+            clear() {
+                const canvas = this.$refs.signatureCanvas;
+                this.context.clearRect(0, 0, canvas.width, canvas.height);
+            }
+        }" x-init="setTimeout(() => initCanvas(), 500)">
+            <label class="text-sm font-bold text-slate-700 mb-2">توقيع المتبرع (Donor Signature)</label>
+            <div
+                class="relative w-full md:w-96 h-40 bg-white border-2 border-dashed border-slate-300 rounded-xl overflow-hidden hover:border-brand-400 transition-colors">
+                <canvas x-ref="signatureCanvas" @mousedown="startDrawing" @mousemove="draw" @mouseup="stopDrawing"
+                    @mouseleave="stopDrawing" @touchstart.prevent="startDrawing" @touchmove.prevent="draw"
+                    @touchend.prevent="stopDrawing" class="w-full h-full cursor-crosshair touch-none"></canvas>
+
+                <div class="absolute bottom-2 left-2 z-10">
+                    <button @click="clear()"
+                        class="px-3 py-1 bg-rose-50 text-rose-600 text-xs font-bold rounded-lg border border-rose-100 hover:bg-rose-100 transition-colors">
+                        Clear / مسح
+                    </button>
+                </div>
+                <div class="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 pointer-events-none opacity-10">
+                    <span class="text-4xl font-display font-bold text-slate-500">Sign Here</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- Bottom Actions -->
+        <div class="flex justify-between items-center pt-4 border-t border-slate-100">
+            <button
+                class="px-6 py-2 bg-slate-100 text-slate-600 font-bold rounded-lg hover:bg-slate-200 transition-all">
+                Back / رجوع
+            </button>
+
+            <button x-show="isQuestionsEditable" @click="submitQuestions()" :disabled="submitting"
+                class="px-8 py-2 bg-[#0ea5e9] hover:bg-[#0284c7] text-white font-bold rounded-lg shadow-lg transition-all disabled:opacity-50 flex items-center gap-2">
+                <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                        d="M8 7H5a2 2 0 00-2 2v9a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-3m-1 4l-3 3m0 0l-3-3m3 3V4" />
+                </svg>
+                <span>Save Answers / حفظ وإرسال</span>
+            </button>
+
+            <button x-show="!isQuestionsEditable"
+                class="px-8 py-2 bg-emerald-50 text-emerald-600 border border-emerald-200 font-bold rounded-lg flex items-center gap-2 cursor-default">
+                <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" />
+                </svg>
+                Verified by Donor / تم التوثيق
+            </button>
+        </div>
+    </div>
+</div>
+
+<script>
+    (function () {
+        console.log("Registering Questionnaire Module...");
+        window.workflowModules.questionnaireModule = {
+            async fetchQuestions() {
+                try {
+                    const res = await fetch('/api/questions/?ts=' + new Date().getTime());
+                    if (!res.ok) throw new Error("API not found");
+                    const data = await res.json();
+                    this.questions = data.results || data; // FIX: Handle Pagination
+                    this.questions.forEach(q => {
+                        if (this.answers[q.id] === undefined) {
+                            this.answers[q.id] = null;
+                        }
+                    });
+                } catch (e) {
+                    console.error('Failed to fetch questions', e);
+                }
+            },
+            passAll() {
+                this.questions.forEach(q => {
+                    if (q.safe_answer) {
+                        this.answers[q.id] = q.safe_answer;
+                    } else {
+                        if (q.action_if_yes !== 'ALLOW') this.answers[q.id] = 'No';
+                        else if (q.action_if_no !== 'ALLOW') this.answers[q.id] = 'Yes';
+                        else this.answers[q.id] = 'No';
+                    }
+                });
+            },
+            async createDonationRecord() {
+                if (!this.donationId) {
+                    const donorId = "{{ donor.id }}";
+                    try {
+                        const res = await fetch('/api/donations/', {
+                            method: 'POST',
+                            headers: {
+                                'Content-Type': 'application/json',
+                                'X-CSRFToken': '{{ csrf_token }}'
+                            },
+                            body: JSON.stringify({
+                                donor: donorId,
+                                status: 'New',
+                                site: 'SMC1',
+                                donation_date: new Date().toISOString()
+                            })
+                        });
+                        const data = await res.json();
+                        this.donationId = data.id;
+                        return true;
+                    } catch (e) {
+                        alert('Failed to initialize donation record.');
+                        return false;
+                    }
+                }
+                return true;
+            },
+            async submitQuestions() {
+                const missing = this.questions.find(q => !this.answers[q.id]);
+                if (missing) {
+                    alert('Please answer all questions.');
+                    return;
+                }
+
+                this.submitting = true;
+                const created = await this.createDonationRecord();
+                if (!created) { this.submitting = false; return; }
+
+                const answersPayload = Object.keys(this.answers).map(qid => ({
+                    question_id: qid,
+                    answer: this.answers[qid]
+                }));
+
+                // Grab signature from Canvas if available in Admin UI
+                let signatureData = "";
+                const canvas = document.querySelector('canvas[x-ref="signatureCanvas"]');
+                if (canvas) {
+                    const tempSig = canvas.toDataURL();
+                    // Basic check to see if canvas is NOT completely blank
+                    if (tempSig.length > 500) {
+                        signatureData = tempSig;
+                    }
+                }
+
+                try {
+                    const res = await fetch(`/api/donations/${this.donationId}/submit_answers/`, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json', 'X-CSRFToken': '{{ csrf_token }}' },
+                        body: JSON.stringify({ 
+                            answers: answersPayload, 
+                            signature_data: signatureData || (this.questionnaire ? this.questionnaire.signature_data : ""),
+                            additional_notes: this.questionnaire ? this.questionnaire.additional_notes : ""
+                        })
+                    });
+
+                    const data = await res.json();
+
+                    if (res.ok) {
+                        if (data.status === 'success') {
+                            this.completeTab('questionnaire');
+                        } else {
+                            let msg = "Evaluation Result: " + (data.result || 'REJECTED') + "\n";
+                            msg += "Reason: " + (data.reason || 'Criteria not met') + "\n";
+                            if (data.defer_until) {
+                                msg += "Deferral Ends: " + data.defer_until;
+                            }
+                            alert(msg);
+                        }
+                    } else {
+                        alert(data.detail || data.error || 'Validation failed. Donor may be ineligible.');
+                    }
+                } catch (e) {
+                    alert('Network error submitting answers');
+                    console.error(e);
+                } finally {
+                    this.submitting = false;
+                }
+            }
+        };
+    })();
+</script>

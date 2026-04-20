@@ -1,0 +1,165 @@
+<!-- 3. Vital Signs Tab -->
+<div x-show="currentTab === 'vital_signs'" class="animate-in fade-in slide-in-from-bottom-4 duration-500">
+    <div class="flex justify-between items-start mb-8">
+        <div>
+            <h3 class="text-2xl font-bold text-slate-900">Vital Signs</h3>
+            <p class="text-slate-500">Record verification of vital signs.</p>
+        </div>
+        <div class="flex gap-2">
+            <button x-show="!isVitalsEditable" @click="isVitalsEditable = true"
+                class="px-4 py-2 bg-white text-slate-700 border border-slate-200 hover:bg-slate-50 font-bold rounded-lg transition-all">
+                Edit Vitals
+            </button>
+            <button x-show="isVitalsEditable" @click="submitVitals()" :disabled="submitting"
+                class="px-6 py-2 bg-brand-500 hover:bg-brand-600 text-white font-bold rounded-lg shadow-lg shadow-brand-500/20 transition-all disabled:opacity-50 disabled:cursor-not-allowed">
+                <span x-show="!submitting">Save Vitals</span>
+                <span x-show="submitting">Saving...</span>
+            </button>
+        </div>
+    </div>
+
+    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+        <!-- Age (Calculated) -->
+        <div class="space-y-2">
+            <label class="text-sm font-bold text-slate-700">Age (Years)</label>
+            <input type="text" :value="calculateAge()" disabled
+                class="w-full px-4 py-3 bg-slate-100 border border-slate-200 rounded-xl text-slate-500 font-mono cursor-not-allowed">
+            <p class="text-xs text-slate-400">Calculated from DOB</p>
+        </div>
+        <!-- Weight -->
+        <div class="space-y-2">
+            <label class="text-sm font-bold text-slate-700">Weight (kg)</label>
+            <input type="number" x-model="vitals.weight" :disabled="!isVitalsEditable"
+                class="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-brand-500 transition-all disabled:bg-slate-100 disabled:text-slate-500"
+                placeholder="Enter weight">
+            <p x-show="vitals.weight && vitals.weight < 50" class="text-xs text-amber-500 font-bold">Warning:
+                Below 50kg (Will defer donor)</p>
+        </div>
+
+        <!-- Temperature -->
+        <div class="space-y-2">
+            <label class="text-sm font-bold text-slate-700">Temperature (C)</label>
+            <input type="number" step="0.1" x-model="vitals.temperature" :disabled="!isVitalsEditable"
+                class="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-brand-500 transition-all disabled:bg-slate-100 disabled:text-slate-500"
+                placeholder="37.0">
+            <p x-show="vitals.temperature && vitals.temperature > 37.5" class="text-xs text-red-500 font-bold">
+                High Temp (>37.5)</p>
+        </div>
+
+        <!-- Pulse -->
+        <div class="space-y-2">
+            <label class="text-sm font-bold text-slate-700">Pulse (BPM)</label>
+            <input type="number" x-model="vitals.pulse" :disabled="!isVitalsEditable"
+                class="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-brand-500 transition-all disabled:bg-slate-100 disabled:text-slate-500"
+                placeholder="Enter BPM">
+            <p x-show="vitals.pulse && (vitals.pulse < 50 || vitals.pulse > 100)"
+                class="text-xs text-red-500 font-bold">Abnormal Pulse (50-100)</p>
+        </div>
+
+        <!-- BP Systolic -->
+        <div class="space-y-2">
+            <label class="text-sm font-bold text-slate-700">BP Systolic</label>
+            <input type="number" x-model="vitals.bp_systolic" :disabled="!isVitalsEditable"
+                class="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-brand-500 transition-all disabled:bg-slate-100 disabled:text-slate-500"
+                placeholder="e.g. 120">
+            <p x-show="vitals.bp_systolic && vitals.bp_systolic > 180" class="text-xs text-red-500 font-bold">
+                Too High</p>
+        </div>
+
+        <!-- BP Diastolic -->
+        <div class="space-y-2">
+            <label class="text-sm font-bold text-slate-700">BP Diastolic</label>
+            <input type="number" x-model="vitals.bp_diastolic" :disabled="!isVitalsEditable"
+                class="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-brand-500 transition-all disabled:bg-slate-100 disabled:text-slate-500"
+                placeholder="e.g. 80">
+            <p x-show="vitals.bp_diastolic && vitals.bp_diastolic > 100" class="text-xs text-red-500 font-bold">
+                Too High</p>
+        </div>
+
+        <!-- HB -->
+        <div class="space-y-2">
+            <label class="text-sm font-bold text-slate-700">Hemoglobin (g/dL)</label>
+            <input type="number" step="0.1" x-model="vitals.hemoglobin" :disabled="!isVitalsEditable"
+                class="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-brand-500 transition-all disabled:bg-slate-100 disabled:text-slate-500"
+                placeholder="e.g. 14.5">
+            <p x-show="vitals.hemoglobin && vitals.hemoglobin < 12.5" class="text-xs text-red-500 font-bold">Low
+                HB (Min 12.5)</p>
+        </div>
+
+        <!-- Iqama Confirmation -->
+        <div class="col-span-full mt-4 flex items-center gap-3 p-4 bg-slate-50 border border-slate-200 rounded-xl">
+            <input type="checkbox" x-model="vitals.iqama_checked" id="iqama_check"
+                class="w-5 h-5 text-brand-600 rounded border-slate-300 focus:ring-brand-500 cursor-pointer">
+            <label for="iqama_check" class="text-slate-700 font-bold select-none cursor-pointer">
+                I Confirm that i checked National ID of the Donor <span class="text-red-500">*</span>
+            </label>
+        </div>
+    </div>
+</div>
+
+<script>
+    (function () {
+        console.log("Registering Vital Signs Module...");
+        window.workflowModules.vitals = {
+            async submitVitals() {
+                this.submitting = true;
+
+                // Guard: donationId must exist
+                const donId = parseInt(this.donationId);
+                if (!donId) {
+                    alert("No active donation session found. Cannot save vitals.");
+                    this.submitting = false;
+                    return;
+                }
+
+                try {
+                    const payload = {
+                        weight_kg: parseFloat(this.vitals.weight),
+                        temperature_c: parseFloat(this.vitals.temperature),
+                        pulse: parseInt(this.vitals.pulse),
+                        bp_systolic: parseInt(this.vitals.bp_systolic),
+                        bp_diastolic: parseInt(this.vitals.bp_diastolic),
+                        hemoglobin: parseFloat(this.vitals.hemoglobin),
+                        iqama_checked: this.vitals.iqama_checked
+                    };
+
+                    const res = await fetch(`/api/donations/${donId}/save_vitals/`, {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'X-CSRFToken': '{{ csrf_token }}'
+                        },
+                        body: JSON.stringify(payload)
+                    });
+
+                    let data;
+                    const contentType = res.headers.get("content-type");
+                    if (contentType && contentType.includes("application/json")) {
+                        data = await res.json();
+                    } else {
+                        const text = await res.text();
+                        console.error("Server returned non-JSON:", text.substring(0, 300));
+                        throw new Error(`Server error (${res.status}). Check console for details.`);
+                    }
+
+                    if (res.ok) {
+                        if (data.status === 'success') {
+                            this.isVitalsEditable = false;
+                            this.completeTab('vital_signs');
+                        } else if (data.status === 'rejected') {
+                            alert(`Evaluation Failed: ${data.reason}\nDonor has been deferred.`);
+                            window.location.reload();
+                        }
+                    } else {
+                        alert('Error: ' + (data.error || data.detail || JSON.stringify(data)));
+                    }
+                } catch (e) {
+                    console.error("Vitals Submit Error:", e);
+                    alert('Error saving vitals: ' + e.message);
+                } finally {
+                    this.submitting = false;
+                }
+            }
+        };
+    })();
+</script>

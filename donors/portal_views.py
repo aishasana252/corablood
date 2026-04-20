@@ -382,7 +382,7 @@ def portal_medication(request):
             workflow=workflow,
             defaults={
                 'is_on_medication': is_on_med,
-                'notes': notes,
+                'other_medication_notes': notes,
                 'recorded_by': request.user
             }
         )
@@ -430,7 +430,7 @@ def portal_post_donation(request):
                 'comments': comments
             }
         )
-        workflow.status = DonorWorkflow.Step.LABS
+        workflow.status = DonorWorkflow.Step.DEFERRED
         workflow.save()
         messages.success(request, "Thank you for your feedback!")
         return redirect('portal:dashboard')

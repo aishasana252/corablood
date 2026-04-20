@@ -13,7 +13,7 @@ class User(AbstractUser):
     )
 
     # Module Access Permissions (Checkboxes)
-    can_access_dashboard   = models.BooleanField(default=True, verbose_name='Dashboard')
+    can_access_dashboard   = models.BooleanField(default=False, verbose_name='Dashboard')
     can_access_donors      = models.BooleanField(default=False, verbose_name='Main Navigation')
     can_access_donations   = models.BooleanField(default=False, verbose_name='Donation Process')
     can_access_settings    = models.BooleanField(default=False, verbose_name='Administration')

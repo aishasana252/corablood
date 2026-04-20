@@ -1,5 +1,7 @@
 from rest_framework import serializers
-from .models import DonorWorkflow, Question, QuestionnaireResponse, VitalSigns, BloodDraw, VitalLimit, AdverseReaction, PostDonationSurvey, PreSeparation, DonationAttachment, LabResult, LabOrder, DonorMedicationRecord, Medication
+from .models import DonorWorkflow, Question, QuestionnaireResponse, VitalSigns, BloodDraw, VitalLimit, AdverseReaction, PostDonationSurvey, PreSeparation, DonationAttachment, LabResult, LabOrder, DonorMedicationRecord, Medication, PostDonationCare
+import datetime
+
 
 class QuestionSerializer(serializers.ModelSerializer):
     class Meta:
@@ -38,14 +40,24 @@ class BloodDrawSerializer(serializers.ModelSerializer):
             'bag_visual_inspection', 'iqama_checked', 'both_arm_inspection',
             'arm', 'blood_type', 'blood_nature', 'drawn_start_time',
             'drawn_end_time', 'segment_number', 'first_unit_volume',
-            'duration_minutes'
+            'duration_minutes', 'procedure_type', 'is_filtered', 'total_acd_used',
+            'actual_acd_to_donor', 'post_platelet_count', 'post_hct', 'blood_volume_processed',
+            'total_saline_used', 'apheresis_start_time', 'apheresis_end_time',
+            'kit_lot_no', 'kit_lot_expiry', 'acd_lot_no', 'acd_lot_expiry',
+            'machine_name', 'platelets_collected_volume', 'yield_of_platelets',
+            'volume_of_acd_in_platelets', 'inventory_units_count', 'pre_platelet_count',
+            'donation_reaction'
         ]
         extra_kwargs = {
             'blood_type': {'required': False, 'allow_blank': True},
             'segment_number': {'required': False, 'allow_blank': True},
-            'drawn_start_time': {'required': False},
-            'drawn_end_time': {'required': False},
-            'first_unit_volume': {'required': False, 'allow_null': True}
+            'drawn_start_time': {'required': False, 'allow_null': True},
+            'drawn_end_time': {'required': False, 'allow_null': True},
+            'apheresis_start_time': {'required': False, 'allow_null': True},
+            'apheresis_end_time': {'required': False, 'allow_null': True},
+            'first_unit_volume': {'required': False, 'allow_null': True},
+            'kit_lot_expiry': {'required': False, 'allow_null': True},
+            'acd_lot_expiry': {'required': False, 'allow_null': True}
         }
 
 class AdverseReactionSerializer(serializers.ModelSerializer):
@@ -76,16 +88,89 @@ class PreSeparationSerializer(serializers.ModelSerializer):
         model = PreSeparation
         fields = '__all__'
 
+    def to_internal_value(self, data):
+        # Handle cases where frontend might send 'volume' instead of 'volume_ml'
+        if 'volume' in data and 'volume_ml' not in data:
+            data['volume_ml'] = data['volume']
+        return super().to_internal_value(data)
+
     def get_received_by_name(self, obj):
-        return obj.received_by.get_full_name() if obj.received_by else None
+        if not obj.received_by: return None
+        return obj.received_by.get_full_name() or obj.received_by.username
 
     def get_verified_by_name(self, obj):
-        return obj.verified_by.get_full_name() if obj.verified_by else None
+        if not obj.verified_by: return None
+        return obj.verified_by.get_full_name() or obj.verified_by.username
 
 class WorkflowSerializer(serializers.ModelSerializer):
     class Meta:
         model = DonorWorkflow
-        fields = ['id', 'status', 'created_at']
+        fields = ['id', 'status', 'workflow_type', 'created_at']
+
+class WorkflowStatusSerializer(serializers.ModelSerializer):
+    allowed_steps = serializers.SerializerMethodField()
+    current_step_display = serializers.CharField(source='get_status_display', read_only=True)
+    donor_meta = serializers.SerializerMethodField()
+    completed_steps = serializers.SerializerMethodField()
+
+    class Meta:
+        model = DonorWorkflow
+        fields = ['id', 'status', 'current_step_display', 'allowed_steps', 'completed_steps', 'donor_meta', 'workflow_type', 'donation_code']
+
+    def get_allowed_steps(self, obj):
+        steps = obj.get_workflow_steps()
+        current_idx = obj.get_current_step_index()
+        # In a real clinical setting, some steps might be skipped or optional, 
+        # but usually, you can view anything you've already passed through.
+        return steps[:current_idx + 1]
+    
+    def get_completed_steps(self, obj):
+        steps = obj.get_workflow_steps()
+        current_idx = obj.get_current_step_index()
+        return steps[:current_idx]
+
+    def get_donor_meta(self, obj):
+        return {
+            'full_name': obj.donor.full_name,
+            'blood_group': obj.donor.blood_group,
+            'national_id': obj.donor.national_id,
+            'gender': obj.donor.gender,
+            'age': self.calculate_age(obj.donor.date_of_birth)
+        }
+    
+    def calculate_age(self, born):
+        if not born: return None
+        today = datetime.date.today()
+        return today.getFullYear() - born.year - ((today.month, today.day) < (born.month, born.day)) if hasattr(today, 'getFullYear') else today.year - born.year - ((today.month, today.day) < (born.month, born.day))
+
+
+class BloodComponentSerializer(serializers.ModelSerializer):
+    created_by_name = serializers.SerializerMethodField()
+    modified_by_name = serializers.SerializerMethodField()
+    approved_by_name = serializers.SerializerMethodField()
+    
+    class Meta:
+        from inventory.models import BloodComponent
+        model = BloodComponent
+        fields = [
+            'id', 'unit_number', 'component_type', 'volume', 'status', 'notes',
+            'expiration_date', 'manufactured_at', 'updated_at', 'approved_at',
+            'created_by_name', 'modified_by_name', 'approved_by_name',
+            'visual_inspection', 'bacterial_contamination', 'storage_time_after_prep',
+            'is_labeled', 'label_printed_at',
+        ]
+
+    def get_created_by_name(self, obj):
+        if not obj.created_by: return '-'
+        return obj.created_by.get_full_name() or obj.created_by.username
+
+    def get_modified_by_name(self, obj):
+        if not obj.modified_by: return ''
+        return obj.modified_by.get_full_name() or obj.modified_by.username
+
+    def get_approved_by_name(self, obj):
+        if not obj.approved_by: return ''
+        return obj.approved_by.get_full_name() or obj.approved_by.username
 
 class WorkflowDetailSerializer(serializers.ModelSerializer):
     vitals = VitalSignsSerializer(source='vitalsigns_set', many=True, read_only=True)
@@ -98,13 +183,15 @@ class WorkflowDetailSerializer(serializers.ModelSerializer):
     # New Lab Fields - Using method fields to ensure correct querying
     lab_results = serializers.SerializerMethodField()
     lab_orders = serializers.SerializerMethodField()
+    components = serializers.SerializerMethodField()
     
+    questionnaire = QuestionnaireResponseSerializer(read_only=True)
     answers = serializers.SerializerMethodField()
     code = serializers.SerializerMethodField()
-
+    
     class Meta:
         model = DonorWorkflow
-        fields = ['id', 'status', 'created_at', 'code', 'vitals', 'blood_draw', 'answers', 'adverse_reaction', 'survey', 'pre_separation', 'lab_results', 'lab_orders', 'medication_record']
+        fields = ['id', 'status', 'workflow_type', 'created_at', 'code', 'vitals', 'blood_draw', 'questionnaire', 'answers', 'adverse_reaction', 'survey', 'pre_separation', 'lab_results', 'lab_orders', 'medication_record', 'components']
     
     def get_code(self, obj):
         """Return the official donation code if available, fallback to ID."""
@@ -126,6 +213,9 @@ class WorkflowDetailSerializer(serializers.ModelSerializer):
         from .models import LabOrder
         orders = LabOrder.objects.filter(workflow=obj).order_by('-created_at')
         return LabOrderSerializer(orders, many=True).data
+
+    def get_components(self, obj):
+        return BloodComponentSerializer(obj.components.all(), many=True).data
 
     def to_representation(self, instance):
         ret = super().to_representation(instance)
@@ -201,6 +291,11 @@ class DonationAttachmentSerializer(serializers.ModelSerializer):
         if obj.file:
             return obj.file.url
         return None
+
+class PostDonationCareSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = PostDonationCare
+        fields = '__all__'
 
 class LabResultSerializer(serializers.ModelSerializer):
     technician_name = serializers.SerializerMethodField()

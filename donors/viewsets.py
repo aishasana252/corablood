@@ -1,36 +1,25 @@
 from rest_framework import viewsets, filters, decorators
 from rest_framework.response import Response
 from rest_framework.decorators import action
+from django.db.models import Prefetch
 from .models import Donor, DonorDeferral
-from .serializers import DonorSerializer, DonorDeferralSerializer
+from .serializers import DonorSerializer, DonorDeferralSerializer, DonorListSerializer
+from clinical.models import DonorWorkflow # Import at top
 
 class DonorViewSet(viewsets.ModelViewSet):
-    queryset = Donor.objects.all().order_by('-created_at')
-    serializer_class = DonorSerializer
-    filter_backends = [filters.SearchFilter, filters.OrderingFilter]
-    search_fields = ['full_name', 'national_id', 'mobile']
+    queryset = Donor.objects.all().prefetch_related(
+        Prefetch('workflows', queryset=DonorWorkflow.objects.order_by('-created_at'))
+    ).order_by('-created_at')
+    
+    def get_serializer_class(self):
+        if self.action == 'list':
+            return DonorListSerializer
+        return DonorSerializer
 
     def get_queryset(self):
-        queryset = super().get_queryset()
-        
-        # Exclude donors with active workflows (for New Donors list)
-        if self.request.query_params.get('exclude_active') == 'true':
-            from clinical.models import DonorWorkflow
-            active_statuses = [
-                DonorWorkflow.Step.REGISTRATION,
-                DonorWorkflow.Step.QUESTIONNAIRE,
-                DonorWorkflow.Step.VITALS,
-                DonorWorkflow.Step.COLLECTION,
-                DonorWorkflow.Step.LABS
-            ]
-            queryset = queryset.exclude(workflows__status__in=active_statuses)
+        # Bare minimum queryset for debugging speed issues
+        return super().get_queryset()
 
-        # Manual Date Filtering
-        date_param = self.request.query_params.get('created_at__date')
-        if date_param:
-            queryset = queryset.filter(created_at__date=date_param)
-            
-        return queryset
 
     @action(detail=True, methods=['get'])
     def history_stats(self, request, pk=None):
@@ -52,7 +41,7 @@ class DonorViewSet(viewsets.ModelViewSet):
             comp_list = [{
                 'id': c.id,
                 'type': c.component_type,
-                'volume': c.volume_ml,
+                'volume': c.volume,
                 'status': c.status
             } for c in comps]
 
@@ -64,12 +53,42 @@ class DonorViewSet(viewsets.ModelViewSet):
                 else:
                     code = f"WF-{wf.id:05d}"
 
+            # Get vitals
+            vitals = getattr(wf, 'vitals', None)
+            draw = getattr(wf, 'blood_draw', None)
+
+            f_vol = comps.filter(component_type__icontains='RCC').first().volume if comps.filter(component_type__icontains='RCC').exists() else ''
+            s_vol = comps.filter(component_type__icontains='FFP').first().volume if comps.filter(component_type__icontains='FFP').exists() else ''
+            t_vol = comps.filter(component_type__icontains='Platelet').first().volume if comps.filter(component_type__icontains='Platelet').exists() else ''
+            bp = ''
+            if vitals and vitals.bp_systolic and vitals.bp_diastolic:
+                bp = f"{vitals.bp_systolic}/{vitals.bp_diastolic}"
+            
             history_list.append({
                 'id': wf.id,
                 'date': wf.created_at.isoformat(),
                 'code': code,
                 'status': wf.status,
-                'components': comp_list
+                'components': comp_list,
+                'vitals': {
+                    'height': getattr(vitals, 'height', ''),
+                    'weight': vitals.weight_kg if vitals else '',
+                    'hgb': vitals.hemoglobin if vitals else '',
+                    'pulse': vitals.pulse if vitals else '',
+                    'bp': bp,
+                    'temp': vitals.temperature_c if vitals else ''
+                },
+                'draw': {
+                    'arm': draw.arm if draw else '',
+                    'blood_nature': 'Whole Blood', # Default for generic tracking
+                    'patient_name': '', # Typically not known here until crossmatched
+                    'f_vol': f_vol,
+                    's_vol': s_vol,
+                    't_vol': t_vol,
+                },
+                'donor_name': donor.full_name,
+                'blood_group': donor.blood_group,
+                'by': wf.created_by.get_full_name() if wf.created_by else 'System'
             })
 
         data = {

@@ -1,0 +1,128 @@
+<!-- 2.1 Medication Tab -->
+<div x-show="currentTab === 'medication'" class="animate-in fade-in slide-in-from-bottom-4 duration-500">
+    <div class="flex justify-between items-start mb-8">
+        <div>
+            <h3 class="text-2xl font-bold text-slate-900">Medication Review</h3>
+            <p class="text-slate-500">Document medications taken by the donor.</p>
+        </div>
+        <div class="flex gap-2">
+            <button @click="completeTab('medication')"
+                class="px-6 py-2 bg-brand-500 hover:bg-brand-600 text-white font-bold rounded-lg shadow-lg shadow-brand-500/20 transition-all">
+                Skip / Proceed
+            </button>
+        </div>
+    </div>
+
+    <div class="bg-amber-50 border border-amber-200 rounded-xl p-6 mb-6">
+        <div class="flex gap-4 items-center">
+            <div class="w-12 h-12 bg-amber-100 rounded-full flex items-center justify-center text-amber-600">
+                <svg class="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                        d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                </svg>
+            </div>
+            <div>
+                <h4 class="font-bold text-amber-900">Patient-Faced Entry</h4>
+                <p class="text-sm text-amber-700">Donors can also fill this via their portal. Use this screen to
+                    record details if the donor is presenting them to you now.</p>
+            </div>
+        </div>
+    </div>
+
+    <div class="grid grid-cols-1 lg:grid-cols-2 gap-8">
+        <!-- Donor Portal Entry -->
+        <div class="space-y-6">
+            <div class="bg-indigo-50 border border-indigo-200 rounded-2xl p-6 h-full">
+                <div class="flex items-center gap-2 mb-6 text-indigo-900">
+                    <svg class="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                            d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04M12 2.944a11.955 11.955 0 01-8.618 3.04m0 0a11.955 11.955 0 00-3.382 8.58c0 5.89 4.778 10.667 10.667 10.667m12-10.667a11.955 11.955 0 00-3.382-8.58M12 2.944a11.954 11.954 0 00-8.618 3.04" />
+                    </svg>
+                    <h4 class="font-display font-extrabold text-lg">Donor Portal Entries</h4>
+                </div>
+
+                <template x-if="medication_record.is_on_medication">
+                    <div class="space-y-4">
+                        <div class="bg-white/60 p-4 rounded-xl">
+                            <span class="text-xs font-bold text-indigo-400 uppercase">Medications Listed</span>
+                            <div class="flex flex-wrap gap-2 mt-2">
+                                <template x-for="name in medication_record.medications_taken_names" :key="name">
+                                    <span class="px-3 py-1 bg-indigo-100 text-indigo-700 rounded-full text-sm font-bold"
+                                        x-text="name"></span>
+                                </template>
+                                <template x-if="medication_record.medications_taken_names.length === 0">
+                                    <span class="text-sm text-indigo-400 font-medium">No specific items
+                                        selected</span>
+                                </template>
+                            </div>
+                        </div>
+
+                        <div class="bg-white/60 p-4 rounded-xl">
+                            <span class="text-xs font-bold text-indigo-400 uppercase">Other Notes</span>
+                            <p class="text-slate-700 mt-1 font-medium italic"
+                                x-text="medication_record.other_medication_notes || 'No extra notes provided'">
+                            </p>
+                        </div>
+                    </div>
+                </template>
+
+                <template x-if="!medication_record.is_on_medication">
+                    <div class="text-center py-10 opacity-50">
+                        <p class="text-slate-500 font-bold">Donor reported no medications.</p>
+                    </div>
+                </template>
+            </div>
+        </div>
+
+        <!-- Admin Action -->
+        <div class="p-6 bg-white border border-slate-200 rounded-2xl shadow-sm">
+            <h4 class="font-bold text-slate-800 mb-6">Internal Review</h4>
+            <label class="block text-sm font-bold text-slate-600 mb-2">Pharmacist/Nurse Comments</label>
+            <textarea x-model="medication_record.notes"
+                class="w-full h-32 px-4 py-3 bg-slate-50 border rounded-xl mb-6 focus:ring-2 focus:ring-brand-500"
+                placeholder="Add review notes here..."></textarea>
+
+            <div class="flex gap-4">
+                <button @click="submitMedication()"
+                    class="flex-1 py-3 bg-brand-500 hover:bg-brand-600 text-white font-bold rounded-xl shadow-lg transition-all">
+                    Approve & Continue
+                </button>
+                <button class="px-6 py-3 bg-rose-50 text-rose-600 font-bold rounded-xl border border-rose-100">
+                    Defer Donor
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+    (function () {
+        console.log("Registering Medication Module...");
+        window.workflowModules.medication = {
+            async submitMedication() {
+                this.submitting = true;
+                try {
+                    const res = await fetch(`/api/donations/${this.donationId}/save_medication/`, {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'X-CSRFToken': '{{ csrf_token }}'
+                        },
+                        body: JSON.stringify(this.medication_record)
+                    });
+                    if (res.ok) {
+                        this.completeTab('medication'); // Visually completes current and goes next
+                    } else {
+                        const data = await res.json();
+                        alert('Could not save medication: ' + (data.error || 'Unknown Error'));
+                    }
+                } catch (e) {
+                    console.error("Save medication failed", e);
+                    alert("Network error saving medication.");
+                } finally {
+                    this.submitting = false;
+                }
+            }
+        };
+    })();
+</script>

@@ -242,15 +242,18 @@
         <!-- Pagination -->
         <div class="bg-white px-4 py-3 border-t border-slate-200 sm:px-6 flex items-center justify-between">
             <div class="text-sm text-slate-500">
-                Showing <span class="font-medium" x-text="filteredDonors.length"></span> results
+                Found <span class="font-bold text-slate-800" x-text="totalCount"></span> donors
             </div>
             <div class="flex gap-2">
-                <button
-                    class="px-4 py-2 border border-slate-200 text-sm font-medium rounded-lg text-slate-600 hover:bg-slate-50 transition-colors">Previous</button>
-                <button
-                    class="px-4 py-2 border border-slate-200 text-sm font-medium rounded-lg text-slate-600 hover:bg-slate-50 transition-colors">Next</button>
+                <button @click="loadPage(prevPage)" :disabled="!prevPage"
+                    :class="!prevPage ? 'opacity-50 cursor-not-allowed bg-slate-50' : 'hover:bg-slate-50 cursor-pointer'"
+                    class="px-4 py-2 border border-slate-200 text-sm font-medium rounded-lg text-slate-600 transition-colors">Previous</button>
+                <button @click="loadPage(nextPage)" :disabled="!nextPage"
+                    :class="!nextPage ? 'opacity-50 cursor-not-allowed bg-slate-50' : 'hover:bg-slate-50 cursor-pointer'"
+                    class="px-4 py-2 border border-slate-200 text-sm font-medium rounded-lg text-slate-600 transition-colors">Next</button>
             </div>
         </div>
+
         <!-- Details Side Panel -->
         {% include "donors/donors_panel.html" %}
     </div>
@@ -268,12 +271,16 @@
             error: null,
             search: '',
             currentGroup: '',
+            nextPage: null,
+            prevPage: null,
+            totalCount: 0,
             bloodGroupFilter: 'All',
             genderFilter: 'All',
             nationalityFilter: 'All',
             panelOpen: false,
             selectedCase: null,
             isLoading: false,
+
 
             init() {
                 this.fetchDonors();
@@ -294,6 +301,10 @@
 
                     const data = await response.json();
                     this.donors = data.results ? data.results : data;
+                    this.nextPage = data.next;
+                    this.prevPage = data.previous;
+                    this.totalCount = data.count || this.donors.length;
+                    
                     this.filteredDonors = this.donors;
                     this.loading = false;
                 } catch (error) {
@@ -302,6 +313,24 @@
                     this.loading = false;
                 }
             },
+
+            async loadPage(url) {
+                if (!url) return;
+                this.loading = true;
+                try {
+                    const response = await fetch(url);
+                    const data = await response.json();
+                    this.donors = data.results;
+                    this.nextPage = data.next;
+                    this.prevPage = data.previous;
+                    this.filteredDonors = this.donors;
+                } catch (e) {
+                    console.error(e);
+                } finally {
+                    this.loading = false;
+                }
+            },
+
 
             filterDonors() {
                 // Trigger server fetch to get correctly filtered and paginated results

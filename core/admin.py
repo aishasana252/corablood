@@ -23,8 +23,10 @@ class CustomUserAdmin(UserAdmin):
 
     def get_queryset(self, request):
         qs = super().get_queryset(request)
-        # Exclude donors from the system users list as requested by the user
-        return qs.exclude(role__iexact='Donor')
+        # Show all staff/superusers, and any non-donor users. 
+        # Hide regular donors who don't have staff status to keep the list clean.
+        from django.db.models import Q
+        return qs.filter(Q(is_staff=True) | Q(is_superuser=True) | ~Q(role__iexact='Donor'))
 
     def edit_action(self, obj):
         url = reverse('admin:core_user_change', args=[obj.id])

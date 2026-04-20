@@ -1,0 +1,70 @@
+<!-- 6. Post-Donation Care Tab -->
+<div x-show="currentTab === 'post_donation'" class="animate-in fade-in slide-in-from-bottom-4 duration-500">
+    <div class="flex justify-between items-start mb-8">
+        <div>
+            <h3 class="text-2xl font-bold text-slate-900">Post-Donation Care</h3>
+            <p class="text-slate-500">Record verification of donor recovery and rest period.</p>
+        </div>
+        <div class="flex gap-2">
+            <button @click="submitPostDonation()"
+                class="px-6 py-2 bg-brand-500 hover:bg-brand-600 text-white font-bold rounded-lg shadow-lg shadow-brand-500/20 transition-all">
+                Complete Rest Period
+            </button>
+        </div>
+    </div>
+
+    <div class="grid grid-cols-1 md:grid-cols-2 gap-8">
+        <div class="space-y-4">
+            <label class="flex items-center gap-3 p-4 bg-slate-50 border rounded-xl cursor-pointer">
+                <input type="checkbox" checked class="w-5 h-5 text-brand-600 rounded">
+                <span class="font-bold text-slate-700">Donor remained in rest area for 15 mins?</span>
+            </label>
+            <label class="flex items-center gap-3 p-4 bg-slate-50 border rounded-xl cursor-pointer">
+                <input type="checkbox" checked class="w-5 h-5 text-brand-600 rounded">
+                <span class="font-bold text-slate-700">Donor had post-donation snacks?</span>
+            </label>
+            <label class="flex items-center gap-3 p-4 bg-slate-50 border rounded-xl cursor-pointer">
+                <input type="checkbox" checked class="w-5 h-5 text-brand-600 rounded">
+                <span class="font-bold text-slate-700">No immediate reactions observed?</span>
+            </label>
+        </div>
+        <div class="bg-indigo-50 p-6 rounded-2xl border border-indigo-100">
+            <h4 class="font-bold text-indigo-900 mb-2 text-center">Protocol Reminder</h4>
+            <ul class="text-sm text-indigo-700 list-disc list-inside space-y-2">
+                <li>Ensure site is not bleeding.</li>
+                <li>Advise donor to drink plenty of fluids.</li>
+                <li>Advise avoiding heavy lifting for 24 hours.</li>
+            </ul>
+        </div>
+    </div>
+</div>
+
+<script>
+    (function () {
+        console.log("Registering Post-Donation Module...");
+        window.workflowModules.post_donation = {
+            async submitPostDonation() {
+                try {
+                    const res = await fetch(`/api/v2/workflow/${this.donationId}/step/post_donation/`, {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'X-CSRFToken': '{{ csrf_token }}'
+                        },
+                        body: JSON.stringify({
+                            remained_15_mins: true,
+                            had_snacks: true,
+                            no_immediate_reactions: true
+                        })
+                    });
+                    if (res.ok) {
+                        this.completeTab('post_donation');
+                    }
+                } catch (e) {
+                    console.error(e);
+                    alert("Error completing rest period");
+                }
+            }
+        };
+    })();
+</script>

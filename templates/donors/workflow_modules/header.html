@@ -1,0 +1,280 @@
+<!-- 1. Header Tab -->
+<div x-show="currentTab === 'header'" class="animate-in fade-in slide-in-from-bottom-4 duration-500">
+    <div class="flex justify-between items-start mb-8">
+        <div>
+            <h3 class="text-2xl font-bold text-slate-900">Donation Header</h3>
+            <p class="text-slate-500">Review donor eligibility and basic information.</p>
+        </div>
+        <div class="flex gap-2">
+            {% if not active_workflow or active_workflow.status == 'COMPLETED' or active_workflow.status == 'DEFERRED' %}
+            <form action="{% url 'start_donation' donor.id %}" method="POST">
+                {% csrf_token %}
+                <button type="submit"
+                    class="px-6 py-2 bg-rose-600 hover:bg-rose-700 text-white font-bold rounded-lg shadow-lg shadow-rose-500/20 transition-all flex items-center gap-2 animate-pulse">
+                    <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
+                    </svg>
+                    Start Donation Session
+                </button>
+            </form>
+            {% endif %}
+
+            {% if active_workflow %}
+            <div
+                class="px-4 py-2 bg-blue-50 text-blue-700 border border-blue-200 rounded-lg font-bold flex items-center gap-2">
+                <span class="relative flex h-3 w-3">
+                    <span
+                        class="animate-ping absolute inline-flex h-full w-full rounded-full bg-blue-400 opacity-75"></span>
+                    <span class="relative inline-flex rounded-full h-3 w-3 bg-blue-500"></span>
+                </span>
+                Viewing: {{ active_workflow.get_status_display }}
+            </div>
+            {% endif %}
+
+            <template x-if="!editMode">
+                <button @click="editMode = true"
+                    class="px-4 py-2 bg-white text-slate-700 bg-slate-50 border border-slate-200 hover:bg-slate-100 font-bold rounded-lg transition-all">
+                    Edit Details
+                </button>
+            </template>
+            <template x-if="editMode">
+                <button @click="saveDonorDetails()"
+                    class="px-6 py-2 bg-brand-600 hover:bg-brand-700 text-white font-bold rounded-lg shadow-lg transition-all">
+                    Save Changes
+                </button>
+            </template>
+            <template x-if="editMode">
+                <button @click="editMode = false"
+                    class="px-4 py-2 text-slate-500 hover:text-slate-700 font-bold rounded-lg transition-all">
+                    Cancel
+                </button>
+            </template>
+        </div>
+    </div>
+
+    <!-- Profile Info Grid -->
+    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+
+        <!-- Full Name -->
+        <div class="p-4 bg-slate-50 rounded-xl border border-slate-100 relative group">
+            <label class="text-xs font-bold text-slate-400 uppercase tracking-wider">Full Name</label>
+            <div x-show="!editMode">
+                <p class="text-lg font-bold text-slate-900 mt-1" x-text="donorDetails.full_name"></p>
+            </div>
+            <div x-show="editMode">
+                <input type="text" x-model="donorDetails.full_name"
+                    class="w-full mt-1 px-3 py-2 border rounded-lg focus:ring-brand-500">
+            </div>
+        </div>
+
+        <!-- National ID -->
+        <div class="p-4 bg-slate-50 rounded-xl border border-slate-100">
+            <label class="text-xs font-bold text-slate-400 uppercase tracking-wider">National ID / Iqama</label>
+            <div x-show="!editMode">
+                <p class="text-lg font-bold text-slate-900 mt-1 font-mono" x-text="donorDetails.national_id">
+                </p>
+            </div>
+            <div x-show="editMode">
+                <input type="text" x-model="donorDetails.national_id"
+                    class="w-full mt-1 px-3 py-2 border rounded-lg focus:ring-brand-500 font-mono">
+            </div>
+        </div>
+
+        <!-- Mobile -->
+        <div class="p-4 bg-slate-50 rounded-xl border border-slate-100">
+            <label class="text-xs font-bold text-slate-400 uppercase tracking-wider">Mobile Number</label>
+            <div x-show="!editMode">
+                <p class="text-lg font-bold text-slate-900 mt-1 font-mono" x-text="donorDetails.mobile || '—'">
+                </p>
+            </div>
+            <div x-show="editMode">
+                <input type="text" x-model="donorDetails.mobile"
+                    class="w-full mt-1 px-3 py-2 border rounded-lg focus:ring-brand-500 font-mono">
+            </div>
+        </div>
+
+        <!-- Blood Group -->
+        <div class="p-4 bg-slate-50 rounded-xl border border-slate-100">
+            <label class="text-xs font-bold text-slate-400 uppercase tracking-wider">Blood Group</label>
+            <div x-show="!editMode">
+                <p class="text-lg font-bold text-slate-900 mt-1" x-text="donorDetails.blood_group || 'Unknown'">
+                </p>
+            </div>
+            <div x-show="editMode">
+                <select x-model="donorDetails.blood_group"
+                    class="w-full mt-1 px-3 py-2 border rounded-lg focus:ring-brand-500 bg-white">
+                    <option value="">Unknown</option>
+                    <option value="A+">A+</option>
+                    <option value="A-">A-</option>
+                    <option value="B+">B+</option>
+                    <option value="B-">B-</option>
+                    <option value="O+">O+</option>
+                    <option value="O-">O-</option>
+                    <option value="AB+">AB+</option>
+                    <option value="AB-">AB-</option>
+                </select>
+            </div>
+        </div>
+
+        <!-- DOB -->
+        <div class="p-4 bg-slate-50 rounded-xl border border-slate-100">
+            <label class="text-xs font-bold text-slate-400 uppercase tracking-wider">Date of Birth</label>
+            <div x-show="!editMode">
+                <p class="text-lg font-bold text-slate-900 mt-1" x-text="donorDetails.date_of_birth"></p>
+            </div>
+            <div x-show="editMode">
+                <input type="date" x-model="donorDetails.date_of_birth"
+                    class="w-full mt-1 px-3 py-2 border rounded-lg focus:ring-brand-500">
+            </div>
+        </div>
+
+        <!-- Nationality -->
+        <div class="p-4 bg-slate-50 rounded-xl border border-slate-100">
+            <label class="text-xs font-bold text-slate-400 uppercase tracking-wider">Nationality</label>
+            <div x-show="!editMode">
+                <p class="text-lg font-bold text-slate-900 mt-1" x-text="donorDetails.nationality"></p>
+            </div>
+            <div x-show="editMode">
+                <input type="text" x-model="donorDetails.nationality"
+                    class="w-full mt-1 px-3 py-2 border rounded-lg focus:ring-brand-500">
+            </div>
+        </div>
+
+        <!-- Gender -->
+        <div class="p-4 bg-slate-50 rounded-xl border border-slate-100">
+            <label class="text-xs font-bold text-slate-400 uppercase tracking-wider">Gender</label>
+            <div x-show="!editMode">
+                <p class="text-lg font-bold text-slate-900 mt-1"
+                    x-text="donorDetails.gender === 'M' ? 'Male' : (donorDetails.gender === 'F' ? 'Female' : 'Unknown')">
+                </p>
+            </div>
+            <div x-show="editMode">
+                <select x-model="donorDetails.gender"
+                    class="w-full mt-1 px-3 py-2 border rounded-lg focus:ring-brand-500 bg-white">
+                    <option value="M">Male</option>
+                    <option value="F">Female</option>
+                </select>
+            </div>
+        </div>
+    </div>
+
+    <div class="mt-8 flex gap-4">
+        {% if is_eligible %}
+        <!-- Eligible State -->
+        <div
+            class="flex-1 p-4 rounded-xl border border-emerald-200 bg-emerald-50 text-emerald-800 flex items-start gap-3 shadow-sm">
+            <div class="p-2 bg-emerald-100 rounded-full">
+                <svg class="w-6 h-6 text-emerald-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                        d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                </svg>
+            </div>
+            <div>
+                <h4 class="font-bold text-lg text-emerald-900">Eligible to Donate / مؤهل للتبرع</h4>
+            </div>
+            {% if active_workflow %}
+            <div class="ml-auto">
+                <button @click="confirmProfile()"
+                    class="px-8 py-3 bg-emerald-600 hover:bg-emerald-700 text-white font-bold rounded-xl shadow-lg shadow-emerald-200 transition-all flex items-center gap-2 group">
+                    <span>Confirm Identity & Continue</span>
+                    <svg class="w-5 h-5 transform group-hover:translate-x-1 transition-transform" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 7l5 5m0 0l-5 5m5-5H6" />
+                    </svg>
+                </button>
+            </div>
+            {% endif %}
+        </div>
+        {% else %}
+        <!-- Ineligible State -->
+        <div
+            class="flex-1 p-4 rounded-xl border border-rose-200 bg-rose-50 text-rose-800 flex items-start gap-3 shadow-sm">
+            <div class="p-2 bg-rose-100 rounded-full">
+                <svg class="w-6 h-6 text-rose-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                        d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                </svg>
+            </div>
+            <div>
+                <h4 class="font-bold text-lg text-rose-900">Not Eligible / غير مؤهل</h4>
+                <p class="text-sm opacity-90 mt-1 text-rose-700">
+                    Deferred until: <span class="font-mono font-bold">{{ donor.next_eligible_date }}</span>.
+                    <br>Please ask the donor to return after this date.
+                </p>
+            </div>
+        </div>
+        {% endif %}
+    </div>
+</div>
+
+<script>
+    (function () {
+        console.log("Registering Header Module...");
+        window.workflowModules.header = {
+            async confirmProfile() {
+                if (!this.donationId) {
+                    alert("No active donation session found.");
+                    return;
+                }
+                if (!confirm("Confirm donor identity and proceed?")) return;
+                try {
+                    const res = await fetch(`/api/donations/${this.donationId}/confirm_profile/`, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json', 'X-CSRFToken': '{{ csrf_token }}' }
+                    });
+                    if (res.ok) {
+                        this.completeTab('header');
+                        this.fetchDonationDetails();
+                    } else {
+                        const data = await res.json();
+                        alert("Error: " + (data.error || 'Unknown error'));
+                    }
+                } catch (e) {
+                    alert("Network error");
+                }
+            },
+            async sendNotification(type, method) {
+                if (!confirm(`Send ${method} for "${type}"?`)) return;
+                try {
+                    const res = await fetch(`/api/donations/${this.donationId}/send_notification/`, {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'X-CSRFToken': '{{ csrf_token }}'
+                        },
+                        body: JSON.stringify({ type: type, method: method })
+                    });
+                    const data = await res.json();
+                    if (res.ok) {
+                        this.notifStatus[type] = `✓ ${method} Sent at ${data.timestamp}`;
+                        this.notifStatus = { ...this.notifStatus };
+                        alert(data.message);
+                    } else {
+                        alert('Error: ' + data.error);
+                    }
+                } catch (e) {
+                    alert('Network Error');
+                }
+            },
+            async saveDonorDetails() {
+                try {
+                    const res = await fetch('/api/donors/{{ donor.id }}/', {
+                        method: 'PATCH',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'X-CSRFToken': '{{ csrf_token }}'
+                        },
+                        body: JSON.stringify(this.donorDetails)
+                    });
+                    if (res.ok) {
+                        this.editMode = false;
+                    } else {
+                        const err = await res.json();
+                        alert('Error updating donor: ' + JSON.stringify(err));
+                    }
+                } catch (e) {
+                    alert('Network error updating donor');
+                }
+            }
+        };
+    })();
+</script>

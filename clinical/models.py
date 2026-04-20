@@ -10,22 +10,28 @@ class DonorWorkflow(models.Model):
     class Step(models.TextChoices):
         REGISTRATION = 'REGISTRATION', 'Registration'
         QUESTIONNAIRE = 'QUESTIONNAIRE', 'Medical Questionnaire'
+        MEDICATION = 'MEDICATION', 'Medication Review'
         VITALS = 'VITALS', 'Vital Signs'
         COLLECTION = 'COLLECTION', 'Blood Collection'
-        ADVERSE_REACTION = 'ADVERSE_REACTION', 'Adverse Reaction'
         POST_DONATION = 'POST_DONATION', 'Post-Donation Care'
-        MEDICATION = 'MEDICATION', 'Medication Review'
+        ADVERSE_REACTION = 'ADVERSE_REACTION', 'Adverse Reaction'
         SURVEY = 'SURVEY', 'Post-Donation Survey'
-        LABS = 'LABS', 'Laboratory Testing'
-        PRE_DONATION_LAB = 'PRE_DONATION_LAB', 'Pre-Donation Lab Check'
-        COMPLETED = 'COMPLETED', 'Completed'
         DEFERRED = 'DEFERRED', 'Deferred'
+        PRE_SEPARATION = 'PRE_SEPARATION', 'Pre-Separation Checks'
+        COMPONENTS = 'COMPONENTS', 'Component Extraction'
+        ATTACHMENT = 'ATTACHMENT', 'Attachments'
+        LABEL = 'LABEL', 'Labeling'
+        LABS = 'LABS', 'Laboratory Testing'
+        SELF_EXCLUSION = 'SELF_EXCLUSION', 'Self Exclusion'
+        STATUS_HISTORY = 'STATUS_HISTORY', 'Status History'
+        COMPLETED = 'COMPLETED', 'History'
 
     class WorkflowType(models.TextChoices):
         WHOLE_BLOOD = 'WHOLE_BLOOD', 'Whole Blood Donation'
         APHERESIS = 'APHERESIS', 'Apheresis Donation'
 
     donor = models.ForeignKey(Donor, on_delete=models.CASCADE, related_name='workflows')
+    appointment = models.OneToOneField('donors.DonorAppointment', on_delete=models.SET_NULL, null=True, blank=True, related_name='workflow')
     status = models.CharField(max_length=20, choices=Step.choices, default=Step.REGISTRATION, db_index=True)
     workflow_type = models.CharField(
         max_length=20,
@@ -36,6 +42,7 @@ class DonorWorkflow(models.Model):
     )
     created_at = models.DateTimeField(auto_now_add=True, db_index=True)
     updated_at = models.DateTimeField(auto_now=True)
+    created_by = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, blank=True, related_name='workflows_created')
     
     donation_code = models.CharField(max_length=50, unique=True, null=True, blank=True)
 
@@ -43,27 +50,26 @@ class DonorWorkflow(models.Model):
         return f"{self.donor.full_name} - {self.get_status_display()}"
 
     def get_workflow_steps(self):
-        """Return ordered steps based on workflow type."""
-        steps = [
+        """Return ordered steps for all instances."""
+        return [
             self.Step.REGISTRATION,
             self.Step.QUESTIONNAIRE,
             self.Step.MEDICATION,
             self.Step.VITALS,
-        ]
-        
-        # Insert extra pre-donation lab check only for Apheresis
-        if self.workflow_type == self.WorkflowType.APHERESIS:
-            steps.append(self.Step.PRE_DONATION_LAB)
-            
-        steps.extend([
             self.Step.COLLECTION,
             self.Step.POST_DONATION,
             self.Step.ADVERSE_REACTION,
             self.Step.SURVEY,
+            self.Step.DEFERRED,
+            self.Step.PRE_SEPARATION,
+            self.Step.COMPONENTS,
+            self.Step.ATTACHMENT,
+            self.Step.LABEL,
             self.Step.LABS,
+            self.Step.SELF_EXCLUSION,
+            self.Step.STATUS_HISTORY,
             self.Step.COMPLETED,
-        ])
-        return steps
+        ]
 
     def get_current_step_index(self):
         """Return index of current status in ordered steps."""
@@ -240,8 +246,34 @@ class BloodDraw(models.Model):
     
     drawn_start_time = models.TimeField(null=True, blank=True)
     drawn_end_time = models.TimeField(null=True, blank=True)
+    apheresis_start_time = models.TimeField(null=True, blank=True)
+    apheresis_end_time = models.TimeField(null=True, blank=True)
     
     segment_number = models.CharField(max_length=50, blank=True)
+    
+    # --- Apheresis Specific Fields --- #
+    procedure_type = models.CharField(max_length=50, blank=True, null=True) # e.g., PLT
+    is_filtered = models.BooleanField(default=False)
+    total_acd_used = models.IntegerField(null=True, blank=True)
+    actual_acd_to_donor = models.IntegerField(null=True, blank=True)
+    post_platelet_count = models.IntegerField(null=True, blank=True)
+    post_hct = models.IntegerField(null=True, blank=True)
+    blood_volume_processed = models.IntegerField(null=True, blank=True)
+    total_saline_used = models.IntegerField(null=True, blank=True)
+    
+    kit_lot_no = models.CharField(max_length=50, blank=True, null=True)
+    kit_lot_expiry = models.DateField(null=True, blank=True)
+    acd_lot_no = models.CharField(max_length=50, blank=True, null=True)
+    acd_lot_expiry = models.DateField(null=True, blank=True)
+    
+    machine_name = models.CharField(max_length=100, blank=True, null=True)
+    platelets_collected_volume = models.IntegerField(null=True, blank=True)
+    yield_of_platelets = models.DecimalField(max_digits=5, decimal_places=2, null=True, blank=True)
+    volume_of_acd_in_platelets = models.IntegerField(null=True, blank=True)
+    inventory_units_count = models.IntegerField(default=1)
+    
+    pre_platelet_count = models.IntegerField(null=True, blank=True)
+    donation_reaction = models.BooleanField(default=False)
     
     # Metadata
     created_at = models.DateTimeField(auto_now_add=True)

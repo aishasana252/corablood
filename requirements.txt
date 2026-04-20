@@ -6,3 +6,6 @@ python-dotenv
 pillow
 markdown
 google-generativeai
+gunicorn
+whitenoise
+dj-database-url

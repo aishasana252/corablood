@@ -10,6 +10,7 @@ class BloodComponent(models.Model):
         FFP = 'FFP', 'Fresh Frozen Plasma'
         PLT = 'PLT', 'Platelets'
         CRYO = 'CRYO', 'Cryoprecipitate'
+        APHERESIS = 'APHERESIS', 'Apheresis Component'
 
     class Status(models.TextChoices):
         QUARANTINE = 'QUARANTINE', 'Quarantine (Untested)'
@@ -29,18 +30,28 @@ class BloodComponent(models.Model):
     
     # Clinical Data (Cached from Donor/Lab for query speed)
     blood_group = models.CharField(max_length=10, db_index=True)  # A+, O-, etc. (max_length=10 matches Donor model)
-    volume_ml = models.IntegerField()
+    volume = models.IntegerField(default=0)  # Standardized field name
+    
+    # Labeling Tracking
+    is_labeled = models.BooleanField(default=False)
+    label_printed_at = models.DateTimeField(null=True, blank=True)
     
     # Supply Chain
     status = models.CharField(max_length=20, choices=Status.choices, default=Status.QUARANTINE)
     location = models.CharField(max_length=100, default="Processing Fridge")
     
-    # Timestamps
+    # Timestamps & Tracking
+    created_by = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, blank=True, related_name='created_components')
+    modified_by = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, blank=True, related_name='modified_components')
+    approved_by = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, blank=True, related_name='approved_components')
     manufactured_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+    approved_at = models.DateTimeField(null=True, blank=True)
     expiration_date = models.DateTimeField()
     
     # Separation Checks
     visual_inspection = models.BooleanField(default=False, verbose_name="Visual Inspection")
+    bacterial_contamination = models.CharField(max_length=50, default='None', verbose_name="Bacterial Contamination")
     room_temp_check = models.BooleanField(default=False, verbose_name="Room Temperature Check")
     storage_time_after_prep = models.TimeField(null=True, blank=True, verbose_name="Storage Time After Preparation")
     notes = models.TextField(blank=True, null=True, verbose_name="Notes")

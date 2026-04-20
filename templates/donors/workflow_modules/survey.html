@@ -1,0 +1,177 @@
+<!-- 11. Survey Tab -->
+<div x-show="currentTab === 'survey'" class="animate-in fade-in slide-in-from-bottom-4 duration-500">
+    <div class="flex justify-between items-start mb-8">
+        <div>
+            <h3 class="text-2xl font-bold text-slate-900">Post-Donation Care & Survey</h3>
+            <p class="text-slate-500">Important instructions and satisfaction feedback.</p>
+        </div>
+    </div>
+
+    <div class="space-y-6">
+        <!-- Care Instructions -->
+        <div class="bg-blue-50 border border-blue-200 rounded-2xl p-6">
+            <h4 class="font-bold text-blue-900 text-lg mb-4 flex items-center gap-2">
+                <svg class="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                        d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                </svg>
+                Post-Donation Instructions (تعليمات ما بعد التبرع)
+            </h4>
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-6 text-sm text-blue-800 leading-relaxed" dir="rtl">
+                <ul class="list-disc list-inside space-y-2">
+                    <li>الرجاء شرب السوائل (ماء أو عصير) قبل مغادرة بنك الدم.</li>
+                    <li>عدم مغادرة كرسي التبرع حتى يأذن لك موظف بنك الدم.</li>
+                    <li>عدم التدخين لمدة ساعة بعد التبرع و عدم القيادة لمدة نصف ساعة.</li>
+                    <li>الإكثار من شرب السوائل في الساعات الأربع القادمة.</li>
+                    <li>عدم ممارسة الرياضة القوية بعد التبرع حتى نهاية اليوم.</li>
+                </ul>
+                <ul class="list-disc list-inside space-y-2">
+                    <li>إذا مكان إبرة التبرع بدأ ينزف، ارفع يدك وأضغط عليه.</li>
+                    <li>إذا شعرت بدوار، استلقِ وارفع قدميك.</li>
+                    <li>لا تعود إلى العمل الشاق أو الخطير خلال 12 ساعة.</li>
+                    <li>ستعود كمية الدم إلى وضعها الطبيعي بسرعة.</li>
+                    <li>يمكنك مزاولة نشاطك الطبيعي بعد فترة الراحة.</li>
+                </ul>
+            </div>
+        </div>
+
+        <!-- Survey Pending Notice -->
+        <template x-if="!survey.is_completed">
+            <div class="bg-amber-50 border-2 border-dashed border-amber-200 rounded-3xl p-10 text-center space-y-4">
+                <div
+                    class="w-16 h-16 bg-amber-100 text-amber-600 rounded-full flex items-center justify-center mx-auto mb-2">
+                    <svg class="w-8 h-8" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                            d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                    </svg>
+                </div>
+                <h4 class="text-xl font-bold text-amber-900">Survey Pending on Donor Portal</h4>
+                <p class="text-amber-700 max-w-md mx-auto">
+                    This survey will be completed from the donor portal. The donor has not completed the survey yet. As
+                    soon as the donor completes it, the results will appear here.
+                </p>
+                <div class="text-right" dir="rtl">
+                    <p class="text-amber-800 font-bold">سيتم إكمال هذا الاستبيان من بوابة المتبرع. لم يكمل المتبرع
+                        الاستبيان بعد. بمجرد أن يكمله المتبرع، ستظهر النتائج هنا.</p>
+                </div>
+                <div class="pt-4">
+                    <button @click="fetchDonationDetails()"
+                        class="px-6 py-2 bg-white text-amber-600 border border-amber-200 rounded-xl font-bold hover:bg-amber-100 transition-all flex items-center gap-2 mx-auto">
+                        <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                        </svg>
+                        Check for Survey / تحديث الاستبيان
+                    </button>
+                </div>
+            </div>
+        </template>
+
+        <!-- Survey Results View (Visible only when completed) -->
+        <template x-if="survey.is_completed">
+            <div class="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm space-y-6">
+                <div class="flex items-center gap-3 mb-2">
+                    <div class="w-8 h-8 bg-emerald-100 text-emerald-600 rounded-full flex items-center justify-center">
+                        <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" />
+                        </svg>
+                    </div>
+                    <h4 class="font-bold text-emerald-900">Donor Survey Responses</h4>
+                </div>
+
+                <!-- Q1 -->
+                <div>
+                    <label class="block text-sm font-bold text-slate-700 mb-3">1. Did you feel comfortable during the
+                        donation process? (هل كنت تشعر بالراحة؟)</label>
+                    <div class="flex justify-between gap-2">
+                        <template x-for="i in 5">
+                            <div class="flex-1 text-center py-2 rounded-lg border transition-all"
+                                :class="survey.comfort_during_process == i ? 'bg-brand-50 border-brand-500 text-brand-700 font-bold' : 'bg-slate-50 border-slate-100 text-slate-400 opacity-50'">
+                                <span class="text-xl block mb-1" x-text="['😠','🙁','😐','🙂','😍'][i-1]"></span>
+                                <span class="text-xs" x-text="i"></span>
+                            </div>
+                        </template>
+                    </div>
+                </div>
+
+                <!-- Q2 -->
+                <div>
+                    <label class="block text-sm font-bold text-slate-700 mb-3">2. Are you satisfied with the blood bank
+                        team? (هل أنت راض عن الفريق؟)</label>
+                    <div class="flex justify-between gap-2">
+                        <template x-for="i in 5">
+                            <div class="flex-1 text-center py-2 rounded-lg border transition-all"
+                                :class="survey.staff_satisfaction == i ? 'bg-brand-50 border-brand-500 text-brand-700 font-bold' : 'bg-slate-50 border-slate-100 text-slate-400 opacity-50'">
+                                <span class="text-xl block mb-1" x-text="['😠','🙁','😐','🙂','😍'][i-1]"></span>
+                                <span class="text-xs" x-text="i"></span>
+                            </div>
+                        </template>
+                    </div>
+                </div>
+
+                <!-- Q3 -->
+                <div>
+                    <label class="block text-sm font-bold text-slate-700 mb-3">3. Are you satisfied with the waiting
+                        time? (هل أنت راض عن وقت الانتظار؟)</label>
+                    <div class="flex justify-between gap-2">
+                        <template x-for="i in 5">
+                            <div class="flex-1 text-center py-2 rounded-lg border transition-all"
+                                :class="survey.wait_time_satisfaction == i ? 'bg-brand-50 border-brand-500 text-brand-700 font-bold' : 'bg-slate-50 border-slate-100 text-slate-400 opacity-50'">
+                                <span class="text-xl block mb-1" x-text="['😠','🙁','😐','🙂','😍'][i-1]"></span>
+                                <span class="text-xs" x-text="i"></span>
+                            </div>
+                        </template>
+                    </div>
+                </div>
+
+                <!-- Comments -->
+                <div class="bg-slate-50 p-4 rounded-xl border border-slate-100">
+                    <label class="block text-xs font-bold text-slate-500 uppercase tracking-widest mb-2">Donor
+                        Comments</label>
+                    <p class="text-slate-800 italic" x-text="survey.comments || 'No comments provided by donor.'"></p>
+                </div>
+
+                <div class="flex justify-end pt-4">
+                    <button @click="completeTab('survey'); switchTab('deferral')"
+                        class="px-8 py-3 bg-[#0ea5e9] hover:bg-[#0284c7] text-white font-bold rounded-xl shadow-lg shadow-sky-500/20 transition-all">
+                        Continue to Deferral / متابعة
+                    </button>
+                </div>
+            </div>
+        </template>
+    </div>
+</div>
+
+<script>
+    (function () {
+        console.log("Registering Survey Module...");
+        window.workflowModules.survey = {
+            async submitSurvey() {
+                this.submitting = true;
+                try {
+                    const res = await fetch(`/api/donations/${this.donationId}/save_survey/`, {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'X-CSRFToken': '{{ csrf_token }}'
+                        },
+                        body: JSON.stringify(this.survey)
+                    });
+
+                    if (res.ok) {
+                        this.completeTab('survey');
+                        // Progression is handled by completeTab (linear flow)
+                    } else {
+                        const data = await res.json();
+                        alert('Error saving survey: ' + (data.error || JSON.stringify(data)));
+                    }
+                } catch (e) {
+                    console.error(e);
+                    alert('Network error saving survey');
+                } finally {
+                    this.submitting = false;
+                }
+            }
+        };
+    })();
+</script>
