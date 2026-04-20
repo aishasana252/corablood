@@ -203,7 +203,7 @@
         <!-- Final Submission -->
         <div class="flex justify-end pt-8">
             <button @click="confirmComponents()"
-                    :disabled="generatedComponents.length === 0"
+                    :disabled="!components || components.length === 0"
                     class="px-10 py-4 bg-rose-600 text-white font-black rounded-xl hover:bg-rose-700 shadow-xl shadow-rose-600/30 active:scale-95 transition-all flex items-center gap-3 disabled:opacity-50 disabled:grayscale">
                 Complete Process & Next
                 <i class="fas fa-arrow-right text-xs"></i>
