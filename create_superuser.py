@@ -7,12 +7,26 @@ django.setup()
 from django.contrib.auth import get_user_model
 
 User = get_user_model()
-username = os.environ.get('DJANGO_SUPERUSER_USERNAME', 'admin')
-email = os.environ.get('DJANGO_SUPERUSER_EMAIL', 'admin@example.com')
-password = os.environ.get('DJANGO_SUPERUSER_PASSWORD', 'admin123')
+
+# --- Doctor Admin Account ---
+username = 'doctor'
+password = 'CoraBlood@2026'
 
 if not User.objects.filter(username=username).exists():
-    User.objects.create_superuser(username=username, email=email, password=password)
-    print(f"Superuser '{username}' created.")
+    user = User.objects.create_superuser(username=username, email='doctor@corablood.com', password=password)
+    user.role = 'Doctor'
+    user.is_staff = True
+    user.is_superuser = True
+    user.can_access_dashboard = True
+    user.can_access_donors = True
+    user.can_access_donations = True
+    user.can_access_settings = True
+    user.can_access_inventory = True
+    user.can_access_reports = True
+    user.can_access_clinical = True
+    user.can_access_orders = True
+    user.can_access_ai = True
+    user.save()
+    print(f"Doctor admin '{username}' created with full access.")
 else:
-    print(f"Superuser '{username}' already exists.")
+    print(f"User '{username}' already exists.")
