@@ -5,14 +5,20 @@ from functools import wraps
 def staff_required(view_func):
     """
     Decorator that ensures the user is either a superuser or has staff access flags.
-    If the user is a Donor without specific staff permissions, they are redirected to their portal.
+    Only users with explicit 'Donor' role (and no clinical access) are sent to the donor portal.
+    All other authenticated users are allowed if they have is_staff or any can_access flag.
     """
     @wraps(view_func)
     def _wrapped_view(request, *args, **kwargs):
         if not request.user.is_authenticated:
             return redirect('login')
             
+        # Superusers always pass
         if request.user.is_superuser:
+            return view_func(request, *args, **kwargs)
+
+        # Staff users always pass (Django admin staff flag)
+        if request.user.is_staff:
             return view_func(request, *args, **kwargs)
 
         # Check if they have ANY clinical permission flag
@@ -25,21 +31,19 @@ def staff_required(view_func):
             request.user.can_access_clinical,
             request.user.can_access_orders,
             request.user.can_access_dashboard,
-            request.user.is_staff,
-            request.user.is_superuser
         ])
 
-        # Security check: If they are EXCLUSIVELY a donor (no clinical access), redirect to donor portal
+        # If they have clinical access flags, allow through
+        if has_clinical_access:
+            return view_func(request, *args, **kwargs)
+
+        # Check if they are explicitly a Donor role — redirect to portal
         is_donor_role = getattr(request.user, 'role', '').lower() == 'donor'
-        
-        if is_donor_role and not has_clinical_access:
+        if is_donor_role:
             return redirect('portal:dashboard')
             
-        if not has_clinical_access:
-            # Missing both flags and staff status
-            messages.error(request, "You do not have permission to access the clinical system.")
-            return redirect('logout')
-
-        return view_func(request, *args, **kwargs)
+        # No permissions at all — show error and redirect to login
+        messages.error(request, "You do not have permission to access the clinical system. Please contact your administrator to assign permissions.")
+        return redirect('login')
         
     return _wrapped_view
