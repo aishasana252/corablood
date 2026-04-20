@@ -16,5 +16,9 @@ COPY . .
 # Run collectstatic
 RUN python manage.py collectstatic --noinput
 
-# Start gunicorn
-CMD ["gunicorn", "config.wsgi:application", "--bind", "0.0.0.0:8000"]
+# Copy start script
+COPY start.sh .
+RUN chmod +x start.sh
+
+# Start using script
+CMD ["./start.sh"]
