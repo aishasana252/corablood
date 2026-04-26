@@ -6,9 +6,68 @@ from django.contrib.auth.forms import AuthenticationForm
 from django.contrib import messages
 from django.views.decorators.csrf import csrf_exempt
 
+from donors.models import Donor
+from clinical.models import DonorWorkflow
+from inventory.models import BloodComponent
+from orders.models import BloodOrder, Crossmatch
+from django.db.models import Count, Q
+
 @staff_required
 def dashboard(request):
-    return render(request, 'dashboard.html')
+    # Core Stats
+    total_donors = Donor.objects.count()
+    total_units = BloodComponent.objects.filter(status='AVAILABLE').count()
+    total_requests = BloodOrder.objects.exclude(status='CANCELLED').count()
+    pending_requests = BloodOrder.objects.filter(status='PENDING').count()
+    
+    # Recent Activities Aggregation
+    activities = []
+    
+    # 1. Completed Donations
+    completed_donations = DonorWorkflow.objects.filter(status='COMPLETED').select_related('donor').order_by('-updated_at')[:5]
+    for d in completed_donations:
+        activities.append({
+            'type': 'donation',
+            'title': 'Donation Completed',
+            'description': f"Donor {d.donor.national_id} • {d.get_workflow_type_display()}",
+            'time': d.updated_at,
+            'icon': 'success'
+        })
+        
+    # 2. Issued Units
+    issued_orders = BloodOrder.objects.filter(status='ISSUED').order_by('-updated_at')[:5]
+    for o in issued_orders:
+        activities.append({
+            'type': 'issue',
+            'title': 'Unit Issued',
+            'description': f"Unit for {o.patient_full_name} ({o.urgency})",
+            'time': o.updated_at,
+            'icon': 'info'
+        })
+        
+    # 3. Incompatible Crossmatches
+    failed_crossmatches = Crossmatch.objects.filter(is_compatible=False).select_related('order', 'unit').order_by('-tested_at')[:5]
+    for c in failed_crossmatches:
+        activities.append({
+            'type': 'crossmatch',
+            'title': 'Crossmatch Incompatible',
+            'description': f"Unit #{c.unit.unit_number} • Patient {c.order.patient_mrn}",
+            'time': c.tested_at,
+            'icon': 'warning'
+        })
+        
+    # Sort all by time
+    activities.sort(key=lambda x: x['time'], reverse=True)
+    recent_activities = activities[:8] # Show top 8
+    
+    context = {
+        'total_donors': total_donors,
+        'total_units': total_units,
+        'total_requests': total_requests,
+        'pending_requests': pending_requests,
+        'recent_activities': recent_activities,
+    }
+    return render(request, 'dashboard.html', context)
 
 def staff_login(request):
     """Custom login for staff that rejects Donor-only accounts."""
